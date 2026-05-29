@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Clock, Trash2, Pause, Play } from 'lucide-react';
 import { scheduleService, ScheduledScan } from '@/lib/schedule-service';
@@ -15,20 +15,25 @@ export default function SchedulesPage() {
   const [intervalHours, setIntervalHours] = useState(24);
   const [loading, setLoading] = useState(true);
 
-  const load = async () => {
+  const load = useCallback(async () => {
     const [s, p] = await Promise.all([scheduleService.list(), projectService.getAll()]);
     setSchedules(s);
     setProjects(p);
     if (p.length && !projectId) setProjectId(String(p[0].id));
-  };
+  }, [projectId]);
+
+  const projectMap = useMemo(() => new Map(projects.map((project) => [project.id, project.name])), [projects]);
 
   useEffect(() => {
     if (!authService.isAuthenticated()) {
       router.push('/login');
       return;
     }
-    load().finally(() => setLoading(false));
-  }, [router]);
+    const timer = window.setTimeout(() => {
+      load().finally(() => setLoading(false));
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [load, router]);
 
   const handleCreate = async () => {
     if (!projectId) return;
@@ -101,35 +106,38 @@ export default function SchedulesPage() {
             No scheduled scans yet.
           </div>
         ) : (
-          schedules.map((s) => (
-            <div
-              key={s.id}
-              className="flex flex-col gap-4 rounded-3xl border border-white/10 bg-white/[0.04] p-4 sm:flex-row sm:items-center sm:justify-between"
-            >
-              <div>
-                <p className="font-medium">Project #{s.project_id}</p>
-                <p className="text-sm text-slate-500">
-                  Every {s.interval_hours}h - {s.enabled ? 'Active' : 'Paused'}
-                  {s.next_run_at && ` - Next: ${new Date(s.next_run_at).toLocaleString()}`}
-                </p>
+          schedules.map((s) => {
+            const projectName = projectMap.get(s.project_id) || `Project #${s.project_id}`;
+            return (
+              <div
+                key={s.id}
+                className="flex flex-col gap-4 rounded-3xl border border-white/10 bg-white/[0.04] p-4 sm:flex-row sm:items-center sm:justify-between"
+              >
+                <div>
+                  <p className="font-medium">{projectName}</p>
+                  <p className="text-sm text-slate-500">
+                    Every {s.interval_hours}h - {s.enabled ? 'Active' : 'Paused'}
+                    {s.next_run_at && ` - Next: ${new Date(s.next_run_at).toLocaleString()}`}
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => handleToggle(s.id)}
+                    className="rounded-xl border border-white/10 bg-slate-950/60 p-2 text-slate-200 hover:bg-white/[0.08]"
+                    title={s.enabled ? 'Pause' : 'Resume'}
+                  >
+                    {s.enabled ? <Pause size={18} /> : <Play size={18} />}
+                  </button>
+                  <button
+                    onClick={() => handleDelete(s.id)}
+                    className="rounded-xl border border-red-400/30 bg-red-500/10 p-2 text-red-200 hover:bg-red-500/15"
+                  >
+                    <Trash2 size={18} />
+                  </button>
+                </div>
               </div>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => handleToggle(s.id)}
-                  className="rounded-xl border border-white/10 bg-slate-950/60 p-2 text-slate-200 hover:bg-white/[0.08]"
-                  title={s.enabled ? 'Pause' : 'Resume'}
-                >
-                  {s.enabled ? <Pause size={18} /> : <Play size={18} />}
-                </button>
-                <button
-                  onClick={() => handleDelete(s.id)}
-                  className="rounded-xl border border-red-400/30 bg-red-500/10 p-2 text-red-200 hover:bg-red-500/15"
-                >
-                  <Trash2 size={18} />
-                </button>
-              </div>
-            </div>
-          ))
+            );
+          })
         )}
       </div>
     </div>

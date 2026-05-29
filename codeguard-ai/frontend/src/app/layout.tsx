@@ -1,4 +1,4 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import './globals.css'
 import { Navbar } from '@/components/layout/navbar'
 import { ErrorBoundary } from '@/components/ui/error-boundary'
@@ -9,7 +9,11 @@ export const metadata: Metadata = {
   description: 'Next-generation AI-powered code security and vulnerability scanner with modern UI',
   keywords: 'code security, AI scanner, vulnerability detection, modern UI',
   authors: [{ name: 'CodeGuard Team' }],
-  viewport: 'width=device-width, initial-scale=1',
+}
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
 }
 
 export default function RootLayout({

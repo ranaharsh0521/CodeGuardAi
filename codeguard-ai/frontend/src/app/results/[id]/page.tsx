@@ -2,8 +2,8 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { ArrowLeft, CheckCircle, Download, Trash2, Loader2 } from 'lucide-react';
-import { scanService, ScanResults } from '@/lib/scan-service';
+import { ArrowLeft, CheckCircle, Download, Trash2, Loader2, GitCompare, ShieldCheck } from 'lucide-react';
+import { scanService, FindingWorkflowUpdate, ScanComparison, ScanResults } from '@/lib/scan-service';
 import { authService } from '@/lib/auth-service';
 import { reportService } from '@/lib/report-service';
 import { useScanStatus } from '@/lib/hooks/use-scan-status';
@@ -20,6 +20,8 @@ export default function ScanResultsPage() {
   const [error, setError] = useState('');
   const [filterSeverity, setFilterSeverity] = useState<string>('all');
   const [downloading, setDownloading] = useState<'pdf' | 'json' | null>(null);
+  const [comparison, setComparison] = useState<ScanComparison | null>(null);
+  const [workflowSaving, setWorkflowSaving] = useState<number | null>(null);
 
   const { status: liveStatus, isComplete } = useScanStatus(scanId);
   const { event: wsEvent, connected: wsConnected } = useScanWebSocket(scanId);
@@ -27,6 +29,16 @@ export default function ScanResultsPage() {
   const loadResults = useCallback(async () => {
     const results = await scanService.getScanResult(scanId);
     setScanResults(results);
+    if (results.status === 'completed') {
+      try {
+        const comparisonData = await scanService.compareScan(scanId);
+        setComparison(comparisonData);
+      } catch {
+        setComparison(null);
+      }
+    } else {
+      setComparison(null);
+    }
     return results;
   }, [scanId]);
 
@@ -50,7 +62,10 @@ export default function ScanResultsPage() {
   // Refresh full results when scan completes (polling or WebSocket)
   useEffect(() => {
     if (isComplete || wsEvent?.status === 'completed' || wsEvent?.status === 'failed') {
-      loadResults().catch(() => {});
+      const timer = window.setTimeout(() => {
+        loadResults().catch(() => {});
+      }, 0);
+      return () => window.clearTimeout(timer);
     }
   }, [isComplete, wsEvent?.status, loadResults]);
 
@@ -73,6 +88,24 @@ export default function ScanResultsPage() {
       setError(err instanceof Error ? err.message : 'Download failed');
     } finally {
       setDownloading(null);
+    }
+  };
+
+  const handleWorkflowUpdate = async (findingIndex: number, data: FindingWorkflowUpdate) => {
+    setWorkflowSaving(findingIndex);
+    try {
+      const response = await scanService.updateFindingWorkflow(scanId, findingIndex, data);
+      setScanResults((current) => {
+        if (!current) return current;
+        const nextFindings = [...current.findings];
+        nextFindings[findingIndex] = response.finding;
+        return { ...current, findings: nextFindings };
+      });
+      setError('');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to update finding status');
+    } finally {
+      setWorkflowSaving(null);
     }
   };
 
@@ -120,8 +153,15 @@ export default function ScanResultsPage() {
 
   const filteredFindings =
     filterSeverity === 'all'
-      ? findings
-      : findings.filter((f) => f.severity === filterSeverity);
+      ? findings.map((finding, index) => ({ finding, index }))
+      : findings.map((finding, index) => ({ finding, index })).filter((item) => item.finding.severity === filterSeverity);
+
+  const workflowCounts = {
+    open: findings.filter((finding) => !finding.workflow_status || finding.workflow_status === 'open').length,
+    resolved: findings.filter((finding) => finding.workflow_status === 'resolved').length,
+    ignored: findings.filter((finding) => finding.workflow_status === 'ignored').length,
+    falsePositive: findings.filter((finding) => finding.workflow_status === 'false_positive').length,
+  };
 
   const getRiskLevel = (score: number) => {
     if (score < 20) return 'Low Risk';
@@ -241,10 +281,54 @@ export default function ScanResultsPage() {
               <p className="text-lg">{new Date(scanResults.created_at).toLocaleString()}</p>
             </div>
           </div>
+
+          {scanResults.quality_gate_result && (
+            <div className="mt-6 rounded-2xl border border-white/10 bg-slate-950/50 p-4">
+              <div className="mb-3 flex items-center gap-2">
+                <ShieldCheck size={18} className={scanResults.quality_gate_result.passed ? 'text-emerald-300' : 'text-amber-300'} />
+                <h2 className="font-semibold">Quality Gate</h2>
+              </div>
+              <p className="text-sm text-slate-300">{scanResults.quality_gate_result.summary || 'Quality gate result saved for this scan.'}</p>
+            </div>
+          )}
         </div>
 
         {!isRunning && displayStatus !== 'failed' && (
           <>
+            {comparison && (
+              <div className="mb-8 rounded-3xl border border-white/10 bg-white/[0.04] p-5 sm:p-6">
+                <div className="mb-4 flex items-center gap-2">
+                  <GitCompare className="text-cyan-200" size={20} />
+                  <h2 className="text-xl font-bold">Scan Comparison</h2>
+                </div>
+                {comparison.base_scan_id ? (
+                  <div className="grid gap-3 md:grid-cols-4">
+                    <div className="rounded-2xl bg-slate-950/50 p-4">
+                      <p className="text-xs text-slate-400">Risk Delta</p>
+                      <p className={`mt-2 text-2xl font-bold ${(comparison.risk_delta || 0) <= 0 ? 'text-emerald-200' : 'text-red-200'}`}>
+                        {(comparison.risk_delta || 0) > 0 ? '+' : ''}
+                        {comparison.risk_delta}
+                      </p>
+                    </div>
+                    <div className="rounded-2xl bg-slate-950/50 p-4">
+                      <p className="text-xs text-slate-400">New Findings</p>
+                      <p className="mt-2 text-2xl font-bold text-red-200">{comparison.new_findings_count}</p>
+                    </div>
+                    <div className="rounded-2xl bg-slate-950/50 p-4">
+                      <p className="text-xs text-slate-400">Resolved</p>
+                      <p className="mt-2 text-2xl font-bold text-emerald-200">{comparison.resolved_findings_count}</p>
+                    </div>
+                    <div className="rounded-2xl bg-slate-950/50 p-4">
+                      <p className="text-xs text-slate-400">Unchanged</p>
+                      <p className="mt-2 text-2xl font-bold text-slate-200">{comparison.unchanged_findings_count}</p>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-sm text-slate-400">No previous completed scan is available yet.</p>
+                )}
+              </div>
+            )}
+
             <div className="mb-8 grid grid-cols-2 gap-3 md:grid-cols-4">
               {(['all', 'critical', 'error', 'warning'] as const).map((sev) => (
                 <button
@@ -264,12 +348,32 @@ export default function ScanResultsPage() {
               ))}
             </div>
 
+            <div className="mb-8 grid grid-cols-2 gap-3 md:grid-cols-4">
+              {[
+                { label: 'Open', value: workflowCounts.open, tone: 'text-red-200' },
+                { label: 'Resolved', value: workflowCounts.resolved, tone: 'text-emerald-200' },
+                { label: 'Ignored', value: workflowCounts.ignored, tone: 'text-slate-300' },
+                { label: 'False Positive', value: workflowCounts.falsePositive, tone: 'text-blue-200' },
+              ].map((item) => (
+                <div key={item.label} className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+                  <p className="text-sm text-slate-400">{item.label}</p>
+                  <p className={`mt-2 text-2xl font-bold ${item.tone}`}>{item.value}</p>
+                </div>
+              ))}
+            </div>
+
             <div>
               <h2 className="text-2xl font-bold mb-6">Findings</h2>
               {filteredFindings.length > 0 ? (
                 <div className="space-y-3">
-                  {filteredFindings.map((finding, idx) => (
-                    <FindingItem key={idx} finding={finding} />
+                  {filteredFindings.map(({ finding, index }) => (
+                    <FindingItem
+                      key={`${finding.rule_id}-${finding.file_path}-${finding.line_number}-${index}`}
+                      finding={finding}
+                      index={index}
+                      saving={workflowSaving === index}
+                      onWorkflowUpdate={handleWorkflowUpdate}
+                    />
                   ))}
                 </div>
               ) : (

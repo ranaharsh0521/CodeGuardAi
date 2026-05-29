@@ -1,6 +1,7 @@
 import json
 import subprocess
 import os
+import shutil
 from typing import List, Dict, Any
 from app.core.config import settings
 from app.schemas.analysis import Finding
@@ -14,9 +15,11 @@ class SemgrepScanner:
         findings = []
         try:
             # Check if semgrep is available
+            if not shutil.which(self.cmd):
+                return self._create_demo_findings(path) if settings.ENABLE_DEMO_FINDINGS else []
+
             result = subprocess.run([self.cmd, "--version"], capture_output=True, text=True)
             if result.returncode != 0:
-                print("Semgrep not available, skipping security scan")
                 return self._create_demo_findings(path) if settings.ENABLE_DEMO_FINDINGS else []
                 
             # Run semgrep with auto config and JSON output
@@ -56,8 +59,7 @@ class SemgrepScanner:
             if settings.ENABLE_DEMO_FINDINGS and not findings:
                 return self._create_demo_findings(path)
                 
-        except Exception as e:
-            print(f"Semgrep execution failed: {str(e)}")
+        except Exception:
             return self._create_demo_findings(path) if settings.ENABLE_DEMO_FINDINGS else []
             
         return findings

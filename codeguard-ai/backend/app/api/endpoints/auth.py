@@ -28,6 +28,11 @@ def _dev_oauth_fallback_enabled() -> bool:
     )
 
 
+def _oauth_error_redirect(provider: str, message: str) -> RedirectResponse:
+    params = urlencode({"provider": provider, "error": message})
+    return RedirectResponse(f"{settings.FRONTEND_URL}/auth/oauth/callback?{params}")
+
+
 async def _login_dev_oauth_user(provider: str, db: AsyncSession) -> RedirectResponse:
     if provider not in {"github", "google"}:
         raise HTTPException(status_code=404, detail="Unknown OAuth provider")
@@ -170,37 +175,50 @@ async def github_callback(code: str, db: AsyncSession = Depends(get_db)):
     if not settings.GITHUB_CLIENT_ID or not settings.GITHUB_CLIENT_SECRET:
         raise HTTPException(status_code=503, detail="GitHub OAuth not configured")
 
-    async with httpx.AsyncClient() as client:
-        token_res = await client.post(
-            "https://github.com/login/oauth/access_token",
-            headers={"Accept": "application/json"},
-            data={
-                "client_id": settings.GITHUB_CLIENT_ID,
-                "client_secret": settings.GITHUB_CLIENT_SECRET,
-                "code": code,
-                "redirect_uri": settings.GITHUB_REDIRECT_URI,
-            },
-        )
-        token_data = token_res.json()
-        access_token = token_data.get("access_token")
-        if not access_token:
-            raise HTTPException(status_code=400, detail=token_data.get("error_description", "OAuth failed"))
+    try:
+        async with httpx.AsyncClient(timeout=15.0, trust_env=False) as client:
+            token_res = await client.post(
+                "https://github.com/login/oauth/access_token",
+                headers={"Accept": "application/json"},
+                data={
+                    "client_id": settings.GITHUB_CLIENT_ID,
+                    "client_secret": settings.GITHUB_CLIENT_SECRET,
+                    "code": code,
+                    "redirect_uri": settings.GITHUB_REDIRECT_URI,
+                },
+            )
+            token_data = token_res.json()
+            access_token = token_data.get("access_token")
+            if not access_token:
+                return _oauth_error_redirect(
+                    "github",
+                    token_data.get("error_description", "GitHub sign-in failed. Please try again."),
+                )
 
-        user_res = await client.get(
-            "https://api.github.com/user",
-            headers={"Authorization": f"Bearer {access_token}"},
-        )
-        gh_user = user_res.json()
-
-        email = gh_user.get("email")
-        if not email:
-            emails_res = await client.get(
-                "https://api.github.com/user/emails",
+            user_res = await client.get(
+                "https://api.github.com/user",
                 headers={"Authorization": f"Bearer {access_token}"},
             )
-            emails = emails_res.json()
-            primary = next((e for e in emails if e.get("primary")), None)
-            email = primary["email"] if primary else f"{gh_user['id']}@users.noreply.github.com"
+            user_res.raise_for_status()
+            gh_user = user_res.json()
+
+            email = gh_user.get("email")
+            if not email:
+                emails_res = await client.get(
+                    "https://api.github.com/user/emails",
+                    headers={"Authorization": f"Bearer {access_token}"},
+                )
+                emails_res.raise_for_status()
+                emails = emails_res.json()
+                primary = next((e for e in emails if e.get("primary")), None)
+                email = primary["email"] if primary else f"{gh_user['id']}@users.noreply.github.com"
+    except (httpx.HTTPError, ValueError):
+        if _dev_oauth_fallback_enabled():
+            return await _login_dev_oauth_user("github", db)
+        return _oauth_error_redirect(
+            "github",
+            "GitHub sign-in could not contact GitHub. Check internet or proxy settings and try again.",
+        )
 
     github_id = str(gh_user["id"])
     result = await db.execute(select(User).filter(User.github_id == github_id))
@@ -265,28 +283,40 @@ async def google_callback(code: str, db: AsyncSession = Depends(get_db)):
     if not settings.GOOGLE_CLIENT_ID or not settings.GOOGLE_CLIENT_SECRET:
         raise HTTPException(status_code=503, detail="Google OAuth not configured")
 
-    async with httpx.AsyncClient() as client:
-        token_res = await client.post(
-            "https://oauth2.googleapis.com/token",
-            headers={"Accept": "application/json"},
-            data={
-                "client_id": settings.GOOGLE_CLIENT_ID,
-                "client_secret": settings.GOOGLE_CLIENT_SECRET,
-                "code": code,
-                "grant_type": "authorization_code",
-                "redirect_uri": settings.GOOGLE_REDIRECT_URI,
-            },
-        )
-        token_data = token_res.json()
-        access_token = token_data.get("access_token")
-        if not access_token:
-            raise HTTPException(status_code=400, detail=token_data.get("error_description", "OAuth failed"))
+    try:
+        async with httpx.AsyncClient(timeout=15.0, trust_env=False) as client:
+            token_res = await client.post(
+                "https://oauth2.googleapis.com/token",
+                headers={"Accept": "application/json"},
+                data={
+                    "client_id": settings.GOOGLE_CLIENT_ID,
+                    "client_secret": settings.GOOGLE_CLIENT_SECRET,
+                    "code": code,
+                    "grant_type": "authorization_code",
+                    "redirect_uri": settings.GOOGLE_REDIRECT_URI,
+                },
+            )
+            token_data = token_res.json()
+            access_token = token_data.get("access_token")
+            if not access_token:
+                return _oauth_error_redirect(
+                    "google",
+                    token_data.get("error_description", "Google sign-in failed. Please try again."),
+                )
 
-        user_res = await client.get(
-            "https://www.googleapis.com/oauth2/v3/userinfo",
-            headers={"Authorization": f"Bearer {access_token}"},
+            user_res = await client.get(
+                "https://www.googleapis.com/oauth2/v3/userinfo",
+                headers={"Authorization": f"Bearer {access_token}"},
+            )
+            user_res.raise_for_status()
+            google_user = user_res.json()
+    except (httpx.HTTPError, ValueError):
+        if _dev_oauth_fallback_enabled():
+            return await _login_dev_oauth_user("google", db)
+        return _oauth_error_redirect(
+            "google",
+            "Google sign-in could not contact Google. Check internet or proxy settings and try again.",
         )
-        google_user = user_res.json()
 
     google_id = google_user.get("sub")
     email = google_user.get("email")

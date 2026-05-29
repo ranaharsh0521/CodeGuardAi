@@ -18,11 +18,14 @@ function OAuthCallbackInner() {
     const searchParams = new URLSearchParams(window.location.search);
     const token = searchParams.get('token');
     const provider = searchParams.get('provider') || 'OAuth';
+    const providerError = searchParams.get('error');
 
     if (!token) {
-      setStatus('error');
-      setErrorMessage(`No token received from ${provider}. Please try logging in again.`);
-      return;
+      const timer = window.setTimeout(() => {
+        setStatus('error');
+        setErrorMessage(providerError || `No token received from ${provider}. Please try logging in again.`);
+      }, 0);
+      return () => window.clearTimeout(timer);
     }
 
     let cancelled = false;

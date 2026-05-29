@@ -1,5 +1,8 @@
-import React from 'react';
-import { AlertTriangle, AlertCircle, AlertOctagon, CheckCircle } from 'lucide-react';
+'use client';
+
+import React, { useState } from 'react';
+import { AlertTriangle, AlertCircle, AlertOctagon, CheckCircle, Save } from 'lucide-react';
+import type { FindingWorkflowStatus, FindingWorkflowUpdate } from '@/lib/scan-service';
 
 interface Finding {
   tool: string;
@@ -11,6 +14,10 @@ interface Finding {
   code_snippet?: string;
   ai_fix_suggestion?: string;
   ai_explanation?: string;
+  workflow_status?: FindingWorkflowStatus;
+  workflow_comment?: string;
+  workflow_assignee?: string;
+  workflow_updated_at?: string;
 }
 
 interface ScanCardProps {
@@ -82,7 +89,18 @@ export function ScanCard({
   );
 }
 
-export function FindingItem({ finding }: { finding: Finding }) {
+interface FindingItemProps {
+  finding: Finding;
+  index?: number;
+  saving?: boolean;
+  onWorkflowUpdate?: (index: number, data: FindingWorkflowUpdate) => Promise<void> | void;
+}
+
+export function FindingItem({ finding, index = 0, saving = false, onWorkflowUpdate }: FindingItemProps) {
+  const [status, setStatus] = useState<FindingWorkflowStatus>(finding.workflow_status || 'open');
+  const [comment, setComment] = useState(finding.workflow_comment || '');
+  const [assignee, setAssignee] = useState(finding.workflow_assignee || '');
+
   const getSeverityIcon = (severity: string) => {
     switch (severity) {
       case 'critical':
@@ -109,6 +127,18 @@ export function FindingItem({ finding }: { finding: Finding }) {
     }
   };
 
+  const statusLabel = (value: FindingWorkflowStatus) =>
+    value === 'false_positive' ? 'False positive' : value.replace('_', ' ');
+
+  const handleSaveWorkflow = async () => {
+    if (!onWorkflowUpdate) return;
+    await onWorkflowUpdate(index, {
+      status,
+      comment: comment.trim() || undefined,
+      assignee: assignee.trim() || undefined,
+    });
+  };
+
   return (
     <div className={`mb-3 rounded-2xl bg-white/[0.04] p-4 ${getSeverityColor(finding.severity)}`}>
       <div className="flex items-start space-x-3">
@@ -125,6 +155,49 @@ export function FindingItem({ finding }: { finding: Finding }) {
               {finding.rule_id}
             </span>
           </div>
+
+          {onWorkflowUpdate && (
+            <div className="mt-4 grid gap-3 rounded-2xl border border-white/10 bg-slate-950/50 p-3 md:grid-cols-[0.7fr_1fr_1fr_auto]">
+              <select
+                value={status}
+                onChange={(event) => setStatus(event.target.value as FindingWorkflowStatus)}
+                className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white outline-none focus:border-cyan-300/60"
+                aria-label="Finding status"
+              >
+                {(['open', 'resolved', 'ignored', 'false_positive'] as FindingWorkflowStatus[]).map((item) => (
+                  <option key={item} value={item}>
+                    {statusLabel(item)}
+                  </option>
+                ))}
+              </select>
+              <input
+                value={assignee}
+                onChange={(event) => setAssignee(event.target.value)}
+                placeholder="Assignee"
+                className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white outline-none placeholder:text-slate-500 focus:border-cyan-300/60"
+              />
+              <input
+                value={comment}
+                onChange={(event) => setComment(event.target.value)}
+                placeholder="Comment"
+                className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white outline-none placeholder:text-slate-500 focus:border-cyan-300/60"
+              />
+              <button
+                onClick={handleSaveWorkflow}
+                disabled={saving}
+                className="inline-flex items-center justify-center gap-2 rounded-xl border border-cyan-300/30 bg-cyan-300/10 px-3 py-2 text-sm font-semibold text-cyan-100 transition hover:bg-cyan-300/15 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <Save size={15} />
+                Save
+              </button>
+            </div>
+          )}
+
+          {!onWorkflowUpdate && finding.workflow_status && (
+            <div className="mt-3 inline-flex rounded-full border border-white/10 bg-slate-950/60 px-3 py-1 text-xs capitalize text-slate-300">
+              {statusLabel(finding.workflow_status)}
+            </div>
+          )}
 
           {finding.code_snippet && (
             <pre className="mt-2 bg-gray-800 p-2 rounded text-xs text-gray-300 overflow-auto">

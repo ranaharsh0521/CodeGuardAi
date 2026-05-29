@@ -35,16 +35,27 @@ class ScanRunner:
             ".hg",
             ".svn",
             "__pycache__",
+            ".cache",
             ".mypy_cache",
             ".pytest_cache",
             ".ruff_cache",
             ".scan_workdir",
             ".next",
+            ".vercel",
             "node_modules",
             "venv",
             ".venv",
             "dist",
             "build",
+        }
+        self._copy_excluded_file_suffixes = {
+            ".db",
+            ".db-shm",
+            ".db-wal",
+            ".log",
+            ".pyc",
+            ".pyo",
+            ".tmp",
         }
 
     async def run_scan(self, scan_id: int, db: AsyncSession) -> None:
@@ -246,13 +257,7 @@ class ScanRunner:
                     s = os.path.join(clone_target, item)
                     d = os.path.join(workdir, item)
                     if os.path.isdir(s):
-                        shutil.copytree(
-                            s,
-                            d,
-                            dirs_exist_ok=True,
-                            ignore=self._ignore_scan_copy_paths,
-                            copy_function=self._copy_file_best_effort,
-                        )
+                        self._copy_source_tree(s, d)
                     else:
                         self._copy_file_best_effort(s, d)
             finally:
@@ -266,31 +271,52 @@ class ScanRunner:
 
     def _copy_source_tree(self, source: str, destination: str) -> None:
         """Copy scan-worthy source files while avoiding Windows-locked folders."""
-        for item in os.listdir(source):
-            if item in self._copy_excluded_dirs:
-                continue
+        try:
+            os.makedirs(destination, exist_ok=True)
+        except OSError as exc:
+            print(f"Skipping unreadable scan destination {destination}: {exc}")
+            return
 
-            src = os.path.join(source, item)
-            dst = os.path.join(destination, item)
-            try:
-                if os.path.isdir(src):
-                    shutil.copytree(
-                        src,
-                        dst,
-                        dirs_exist_ok=True,
-                        ignore=self._ignore_scan_copy_paths,
-                        copy_function=self._copy_file_best_effort,
-                    )
-                else:
-                    self._copy_file_best_effort(src, dst)
-            except PermissionError as exc:
-                print(f"Skipping unreadable scan path {src}: {exc}")
+        try:
+            for root, dirs, files in os.walk(source, topdown=True, onerror=self._handle_walk_error):
+                dirs[:] = [name for name in dirs if not self._should_skip_name(name)]
+
+                for name in list(dirs):
+                    path = os.path.join(root, name)
+                    if not os.path.exists(path) or not os.access(path, os.R_OK | os.X_OK):
+                        dirs.remove(name)
+
+                rel_root = os.path.relpath(root, source)
+                target_root = destination if rel_root == "." else os.path.join(destination, rel_root)
+                os.makedirs(target_root, exist_ok=True)
+
+                for file_name in files:
+                    if self._should_skip_name(file_name):
+                        continue
+
+                    src = os.path.join(root, file_name)
+                    dst = os.path.join(target_root, file_name)
+                    try:
+                        if not os.path.exists(src) or not os.access(src, os.R_OK):
+                            continue
+                        self._copy_file_best_effort(src, dst)
+                    except OSError as exc:
+                        print(f"Skipping unreadable scan path {src}: {exc}")
+        except OSError as exc:
+            print(f"Skipping unreadable scan directory {source}: {exc}")
+
+    def _should_skip_name(self, name: str) -> bool:
+        lower_name = name.lower()
+        return (
+            name in self._copy_excluded_dirs
+            or any(lower_name.endswith(suffix) for suffix in self._copy_excluded_file_suffixes)
+        )
 
     def _ignore_scan_copy_paths(self, directory: str, names: list[str]) -> set[str]:
         ignored: set[str] = set()
         for name in names:
             path = os.path.join(directory, name)
-            if name in self._copy_excluded_dirs:
+            if self._should_skip_name(name):
                 ignored.add(name)
                 continue
             try:
@@ -303,11 +329,22 @@ class ScanRunner:
         return ignored
 
     def _copy_file_best_effort(self, source: str, destination: str) -> str:
+        if self._should_skip_name(os.path.basename(source)):
+            return destination
+
         try:
-            return shutil.copy2(source, destination)
-        except PermissionError as exc:
+            if not os.path.exists(source) or not os.access(source, os.R_OK):
+                return destination
+
+            os.makedirs(os.path.dirname(destination), exist_ok=True)
+            shutil.copy2(source, destination, follow_symlinks=False)
+            return destination
+        except (PermissionError, OSError) as exc:
             print(f"Skipping unreadable scan file {source}: {exc}")
             return destination
+
+    def _handle_walk_error(self, exc: OSError) -> None:
+        print(f"Skipping unreadable scan path during walk: {exc}")
 
     async def _cleanup_workspace(self) -> None:
         # Remove scan_workdir entirely if exists (best-effort).

@@ -33,6 +33,7 @@ class ScanResultResponse(BaseModel):
     error_message: Optional[str] = None
     risk_score: int
     findings: List[Any] = []   # stored as raw JSON dicts in DB
+    quality_gate_result: Optional[Dict[str, Any]] = None
     created_at: datetime
     completed_at: Optional[datetime] = None
 

@@ -1,3 +1,5 @@
+from typing import Optional
+
 from fastapi import HTTPException, Depends, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jose import JWTError, jwt
@@ -9,6 +11,22 @@ from app.core.database import get_db
 from app.models.user import User
 
 security = HTTPBearer()
+optional_security = HTTPBearer(auto_error=False)
+
+
+async def get_current_user_optional(
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(optional_security),
+    db: AsyncSession = Depends(get_db),
+):
+    """Return the current authenticated user when available, otherwise None."""
+    if credentials is None:
+        return None
+
+    try:
+        return await get_current_user(credentials, db)
+    except HTTPException:
+        return None
+
 
 async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),

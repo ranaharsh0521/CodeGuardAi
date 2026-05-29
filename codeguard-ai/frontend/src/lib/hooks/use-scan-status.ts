@@ -28,7 +28,9 @@ export function useScanStatus(scanId: number | null, pollingInterval: number = 2
   useEffect(() => {
     if (!scanId) return;
 
-    fetchStatus();
+    const firstFetch = window.setTimeout(() => {
+      fetchStatus();
+    }, 0);
 
     const interval = setInterval(async () => {
       const current = statusRef.current;
@@ -36,7 +38,10 @@ export function useScanStatus(scanId: number | null, pollingInterval: number = 2
       await fetchStatus();
     }, pollingInterval);
 
-    return () => clearInterval(interval);
+    return () => {
+      window.clearTimeout(firstFetch);
+      clearInterval(interval);
+    };
   }, [scanId, fetchStatus, pollingInterval]);
 
   return {

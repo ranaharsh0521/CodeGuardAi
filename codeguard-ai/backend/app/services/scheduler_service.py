@@ -57,6 +57,9 @@ def start_scheduler() -> None:
             minutes=1,
             id="scheduled_scans",
             replace_existing=True,
+            coalesce=True,
+            max_instances=1,
+            misfire_grace_time=120,
         )
         scheduler.start()
 

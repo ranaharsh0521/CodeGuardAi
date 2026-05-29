@@ -3,8 +3,10 @@ from fastapi import APIRouter, HTTPException, Depends, status, BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy import or_
+from sqlalchemy.orm.attributes import flag_modified
 from datetime import datetime, timezone
-from typing import List
+from typing import List, Optional, Literal, Any
+from pydantic import BaseModel, Field
 
 from app.api.endpoints.tasks import dispatch_scan
 
@@ -17,6 +19,12 @@ from app.schemas.scan import ScanCreate, ScanResponse, ScanResultResponse
 from app.api.dependencies import get_current_user
 
 router = APIRouter()
+
+
+class FindingWorkflowUpdate(BaseModel):
+    status: Literal["open", "resolved", "ignored", "false_positive"]
+    comment: Optional[str] = Field(default=None, max_length=500)
+    assignee: Optional[str] = Field(default=None, max_length=120)
 
 
 def _mark_stale_scan_failed(scan: ScanResult, max_age_seconds: int = 600) -> bool:
@@ -42,6 +50,36 @@ def _accessible_project_filter(user_id: int):
         Project.owner_id == user_id,
         Project.team_id.in_(team_ids_q),
     )
+
+
+def _finding_key(finding: dict[str, Any]) -> str:
+    normalized_path = str(finding.get("file_path", "")).replace("\\", "/").strip()
+    path_parts = [part for part in normalized_path.split("/") if part]
+    workdir_index = next(
+        (index for index, part in enumerate(path_parts) if part.startswith("work_")),
+        None,
+    )
+    if workdir_index is not None and workdir_index + 1 < len(path_parts):
+        normalized_path = "/".join(path_parts[workdir_index + 1 :])
+
+    return "|".join(
+        str(value).strip()
+        for value in (
+            finding.get("rule_id", ""),
+            normalized_path,
+            finding.get("message", ""),
+        )
+    )
+
+
+async def _get_accessible_scan(scan_id: int, db: AsyncSession, user_id: int) -> ScanResult | None:
+    result = await db.execute(
+        select(ScanResult).join(Project).filter(
+            ScanResult.id == scan_id,
+            _accessible_project_filter(user_id),
+        )
+    )
+    return result.scalars().first()
 
 @router.post("/", response_model=ScanResponse)
 async def trigger_scan(
@@ -174,6 +212,112 @@ async def list_scans(
         }
         for s in scans
     ]
+
+
+@router.put("/{scan_id}/findings/{finding_index}/workflow")
+async def update_finding_workflow(
+    scan_id: int,
+    finding_index: int,
+    data: FindingWorkflowUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Update triage state for one finding in a scan result."""
+    scan = await _get_accessible_scan(scan_id, db, current_user.id)
+    if not scan:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Scan not found",
+        )
+
+    findings = list(scan.findings or [])
+    if finding_index < 0 or finding_index >= len(findings):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Finding not found",
+        )
+
+    finding = dict(findings[finding_index])
+    finding["workflow_status"] = data.status
+    finding["workflow_comment"] = data.comment
+    finding["workflow_assignee"] = data.assignee
+    finding["workflow_updated_at"] = datetime.now(timezone.utc).isoformat()
+    findings[finding_index] = finding
+
+    scan.findings = findings
+    flag_modified(scan, "findings")
+    await db.commit()
+
+    return {
+        "scan_id": scan.id,
+        "finding_index": finding_index,
+        "finding": finding,
+    }
+
+
+@router.get("/{scan_id}/comparison")
+async def compare_scan(
+    scan_id: int,
+    base_scan_id: Optional[int] = None,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Compare a scan with a chosen or previous completed scan for the project."""
+    current = await _get_accessible_scan(scan_id, db, current_user.id)
+    if not current:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Scan not found",
+        )
+
+    base = None
+    if base_scan_id is not None:
+        base = await _get_accessible_scan(base_scan_id, db, current_user.id)
+        if not base or base.project_id != current.project_id:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Base scan not found for this project",
+            )
+    else:
+        result = await db.execute(
+            select(ScanResult)
+            .filter(
+                ScanResult.project_id == current.project_id,
+                ScanResult.id != current.id,
+                ScanResult.status == "completed",
+                ScanResult.created_at <= current.created_at,
+            )
+            .order_by(ScanResult.created_at.desc())
+        )
+        base = result.scalars().first()
+
+    current_findings = [f for f in (current.findings or []) if isinstance(f, dict)]
+    base_findings = [f for f in (base.findings or []) if isinstance(f, dict)] if base else []
+
+    current_map = {_finding_key(f): f for f in current_findings}
+    base_map = {_finding_key(f): f for f in base_findings}
+    current_keys = set(current_map)
+    base_keys = set(base_map)
+
+    new_keys = current_keys - base_keys
+    resolved_keys = base_keys - current_keys
+    unchanged_keys = current_keys & base_keys
+
+    return {
+        "current_scan_id": current.id,
+        "base_scan_id": base.id if base else None,
+        "project_id": current.project_id,
+        "current_risk_score": current.risk_score or 0,
+        "base_risk_score": base.risk_score if base else None,
+        "risk_delta": (current.risk_score or 0) - (base.risk_score or 0) if base else None,
+        "current_findings_count": len(current_findings),
+        "base_findings_count": len(base_findings),
+        "new_findings_count": len(new_keys),
+        "resolved_findings_count": len(resolved_keys),
+        "unchanged_findings_count": len(unchanged_keys),
+        "new_findings": [current_map[key] for key in sorted(new_keys)],
+        "resolved_findings": [base_map[key] for key in sorted(resolved_keys)],
+    }
 
 @router.get("/{scan_id}", response_model=ScanResultResponse)
 async def get_scan_result(

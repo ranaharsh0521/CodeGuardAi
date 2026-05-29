@@ -29,5 +29,6 @@ echo.
 echo Press Ctrl+C to stop the server
 echo.
 
-REM Start the development server
-npm run dev
+REM Start the development server with a fresh log file for this session.
+if exist frontend_run.log del /q frontend_run.log
+npm run dev > frontend_run.log 2>&1

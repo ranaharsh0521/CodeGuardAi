@@ -377,13 +377,22 @@ export default function Dashboard() {
                 {project.description && (
                   <p className="mb-4 line-clamp-2 text-sm leading-6 text-slate-400">{project.description}</p>
                 )}
-                <button
-                  onClick={() => handleTriggerScan(project.id)}
-                  className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-cyan-300/30 bg-cyan-300/10 px-4 py-3 font-semibold text-cyan-100 transition hover:bg-cyan-300/15"
-                >
-                  Scan Now
-                  <ArrowRight size={18} />
-                </button>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <Link
+                    href={`/projects/${project.id}`}
+                    className="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 font-semibold text-slate-100 transition hover:bg-white/[0.08]"
+                  >
+                    Details
+                    <ArrowRight size={18} />
+                  </Link>
+                  <button
+                    onClick={() => handleTriggerScan(project.id)}
+                    className="inline-flex items-center justify-center gap-2 rounded-2xl border border-cyan-300/30 bg-cyan-300/10 px-4 py-3 font-semibold text-cyan-100 transition hover:bg-cyan-300/15"
+                  >
+                    Scan Now
+                    <ArrowRight size={18} />
+                  </button>
+                </div>
               </div>
             ))}
             {projects.length === 0 && (

@@ -1,6 +1,7 @@
 import json
 import subprocess
 import os
+import shutil
 import tempfile
 from typing import List
 from app.core.config import settings
@@ -15,9 +16,11 @@ class GitleaksScanner:
         findings = []
         try:
             # Check if gitleaks is available
+            if not shutil.which(self.cmd):
+                return self._create_demo_findings(path) if settings.ENABLE_DEMO_FINDINGS else []
+
             result = subprocess.run([self.cmd, "version"], capture_output=True, text=True)
             if result.returncode != 0:
-                print("Gitleaks not available, skipping secret scan")
                 return self._create_demo_findings(path) if settings.ENABLE_DEMO_FINDINGS else []
                 
             # Gitleaks outputs to a file, so we create a temp file
@@ -54,8 +57,7 @@ class GitleaksScanner:
             if settings.ENABLE_DEMO_FINDINGS and not findings:
                 return self._create_demo_findings(path)
                 
-        except Exception as e:
-            print(f"Gitleaks execution failed: {str(e)}")
+        except Exception:
             return self._create_demo_findings(path) if settings.ENABLE_DEMO_FINDINGS else []
             
         return findings

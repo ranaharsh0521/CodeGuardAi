@@ -1,141 +1,263 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { Send, Bot, User } from 'lucide-react';
+import { FormEvent, useEffect, useRef, useState } from 'react';
+import { Bot, CheckCircle, FileSearch, LockKeyhole, Send, ShieldCheck, User } from 'lucide-react';
 import { chatService, ChatMessage } from '@/lib/chat-service';
-import { authService } from '@/lib/auth-service';
+import { useSearchParams } from 'next/navigation';
+
+
+const assistantRules = [
+  'Only CodeGuard AI project, scan, finding, auth, report, upload, team, schedule, and debugging questions.',
+  'Never expose secrets, tokens, passwords, or raw .env values.',
+  'For vulnerabilities, explain risk, give fix steps, then recommend re-scan and triage.',
+  'For unclear errors, ask for scan id, endpoint, file path, or latest log.',
+];
+
+const quickPrompts = [
+  {
+    label: 'Scan workflow',
+    prompt: 'Explain the CodeGuard scan workflow and what I should check after a scan completes.',
+    icon: FileSearch,
+  },
+  {
+    label: 'OAuth error',
+    prompt: 'How should I debug Google or GitHub OAuth errors in this project?',
+    icon: LockKeyhole,
+  },
+  {
+    label: 'Finding triage',
+    prompt: 'How should I use open, resolved, ignored, and false positive statuses for scan findings?',
+    icon: ShieldCheck,
+  },
+  {
+    label: 'Project rules',
+    prompt: 'Show the chat rules for the CodeGuard AI assistant.',
+    icon: CheckCircle,
+  },
+];
 
 export default function ChatAssistant() {
-  const router = useRouter();
+  const searchParams = useSearchParams();
+  const endRef = useRef<HTMLDivElement | null>(null);
+  const projectIdParam = searchParams?.get('projectId') || searchParams?.get('project_id');
+  const projectId = projectIdParam ? Number(projectIdParam) : null;
+
   const [messages, setMessages] = useState<ChatMessage[]>([
-    { 
-      role: 'assistant', 
-      content: 'Hello! I am CodeGuard AI Assistant. Ask me about this project, scan findings, vulnerabilities, auth, uploads, reports, teams, or backend/frontend debugging.',
-      timestamp: new Date().toISOString()
-    }
+    {
+      role: 'assistant',
+      content:
+        'Namaste! Main CodeGuard AI Assistant hoon. Main project ke scans, findings, auth/OAuth, uploads, reports, teams, schedules, aur FastAPI/Next.js debugging me help karta hoon. Guest mode me bhi pooch sakte ho.',
+    },
   ]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    // Check authentication
-    if (!authService.isAuthenticated()) {
-      router.push('/login');
-    }
-  }, [router]);
+    endRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, loading]);
 
-  const handleSend = async () => {
-    if (!input.trim() || loading) return;
-    
+  const sendMessage = async (messageText: string) => {
+    const trimmed = messageText.trim();
+    if (!trimmed || loading) return;
+
+    setError('');
     const userMessage: ChatMessage = {
       role: 'user',
-      content: input,
-      timestamp: new Date().toISOString()
+      content: trimmed,
+      timestamp: new Date().toISOString(),
     };
-    
-    setMessages(prev => [...prev, userMessage]);
-    const currentInput = input;
+
+    setMessages((prev) => [...prev, userMessage]);
     setInput('');
     setLoading(true);
-    
+
     try {
+      const projectNameFromParams = searchParams?.get('projectName') || searchParams?.get('project_name') || undefined;
+
       const response = await chatService.sendMessage({
-        message: currentInput,
+        message: trimmed,
         context: {
+          page: '/chat',
+          product: 'CodeGuard AI',
+          project_id: projectId,
+          project_name: projectNameFromParams,
+          allowed_scope: assistantRules,
           timestamp: new Date().toISOString(),
-          session: 'web-chat'
-        }
+        },
       });
-      
-      const assistantMessage: ChatMessage = {
-        role: 'assistant',
-        content: response.reply,
-        timestamp: new Date().toISOString()
-      };
-      
-      setMessages(prev => [...prev, assistantMessage]);
-    } catch (error: unknown) {
-      const errorMessage: ChatMessage = {
-        role: 'assistant',
-        content: `I'm sorry, I encountered an error: ${error instanceof Error ? error.message : 'Please try again later.'}`,
-        timestamp: new Date().toISOString()
-      };
-      setMessages(prev => [...prev, errorMessage]);
+
+
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: 'assistant',
+          content: response.reply,
+          timestamp: new Date().toISOString(),
+        },
+      ]);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Assistant request failed';
+      setError(message);
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: 'assistant',
+          content: `Chat request failed: ${message}. Check backend is running on http://localhost:8000 and try again.`,
+          timestamp: new Date().toISOString(),
+        },
+      ]);
     } finally {
       setLoading(false);
     }
   };
 
-  return (
-    <div className="mx-auto flex h-[calc(100vh-64px)] max-w-5xl flex-col px-4 py-6 text-white sm:px-6 lg:px-8">
-      <header className="mb-5 rounded-3xl border border-white/10 bg-white/[0.04] p-5 sm:p-6">
-        <h1 className="text-3xl font-bold text-white">
-          CodeGuard AI Assistant
-        </h1>
-        <p className="mt-2 text-slate-400">Project-only help for CodeGuard AI security analysis, scans, fixes, and debugging</p>
-      </header>
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    sendMessage(input);
+  };
 
-      <div className="flex-1 space-y-6 overflow-y-auto rounded-3xl border border-white/10 bg-white/[0.03] p-4 sm:p-5">
-        {messages.map((msg, idx) => (
-          <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-            <div className={`flex max-w-[92%] sm:max-w-[80%] ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
-              <div className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl border ${msg.role === 'user' ? 'ml-3 border-cyan-300/30 bg-cyan-300/10 text-cyan-100 sm:ml-4' : 'mr-3 border-emerald-300/30 bg-emerald-300/10 text-emerald-100 sm:mr-4'}`}>
-                {msg.role === 'user' ? <User size={20} /> : <Bot size={20} />}
-              </div>
-              <div className={`rounded-2xl border p-4 ${msg.role === 'user' ? 'border-cyan-300/30 bg-cyan-300/10 text-cyan-50' : 'border-white/10 bg-slate-950/70 text-slate-200'}`}>
-                <div className="whitespace-pre-wrap">{msg.content}</div>
-                {msg.timestamp && (
-                  <div className="text-xs opacity-70 mt-2">
-                    {new Date(msg.timestamp).toLocaleTimeString()}
-                  </div>
-                )}
-              </div>
-            </div>
+  const formatMessageTime = (timestamp: string) =>
+    new Intl.DateTimeFormat('en-IN', {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false,
+    }).format(new Date(timestamp));
+
+  return (
+    <div className="mx-auto grid min-h-[calc(100vh-64px)] max-w-7xl gap-5 px-4 py-6 text-white sm:px-6 lg:grid-cols-[280px_1fr] lg:px-8">
+      <aside className="h-fit rounded-3xl border border-white/10 bg-white/[0.04] p-5">
+        <div className="mb-5 flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-emerald-300/30 bg-emerald-300/10 text-emerald-100">
+            <Bot size={20} />
           </div>
-        ))}
-        
-        {loading && (
-          <div className="flex justify-start">
-            <div className="flex max-w-[80%]">
-              <div className="mr-4 flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl border border-emerald-300/30 bg-emerald-300/10 text-emerald-100">
-                <Bot size={20} />
-              </div>
-              <div className="rounded-2xl border border-white/10 bg-slate-950/70 p-4 text-slate-200">
-                <div className="flex space-x-1">
-                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
-                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+          <div>
+            <h1 className="font-bold">CodeGuard Chat</h1>
+            <p className="text-xs text-slate-500">
+              {projectId ? `Project-scoped assistant (ID: ${projectId})` : 'Project-scoped assistant'}
+            </p>
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          {assistantRules.map((rule) => (
+            <div key={rule} className="rounded-2xl border border-white/10 bg-slate-950/50 p-3 text-xs leading-5 text-slate-300">
+              {rule}
+            </div>
+          ))}
+        </div>
+      </aside>
+
+      <main className="flex min-h-[calc(100vh-112px)] flex-col">
+        <header className="mb-4 rounded-3xl border border-white/10 bg-white/[0.04] p-5">
+          <h2 className="text-2xl font-bold">Security Assistant</h2>
+          <p className="mt-2 text-sm text-slate-400">
+            Ask about scans, vulnerabilities, OAuth, reports, uploads, schedules, teams, or project errors.
+          </p>
+        </header>
+
+        <div className="mb-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {quickPrompts.map((item) => {
+            const Icon = item.icon;
+            return (
+              <button
+                key={item.label}
+                type="button"
+                onClick={() => sendMessage(item.prompt)}
+                disabled={loading}
+                className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.04] p-3 text-left text-sm text-slate-200 transition hover:border-cyan-300/30 hover:bg-white/[0.07] disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <Icon className="shrink-0 text-cyan-200" size={18} />
+                <span>{item.label}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        {error && (
+          <div className="mb-4 rounded-2xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-100">
+            {error}
+          </div>
+        )}
+
+        <section className="flex-1 space-y-5 overflow-y-auto rounded-3xl border border-white/10 bg-white/[0.03] p-4 sm:p-5">
+          {messages.map((msg, idx) => (
+            <div key={`${msg.timestamp || 'initial'}-${idx}`} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+              <div className={`flex max-w-[94%] sm:max-w-[82%] ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
+                <div
+                  className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border ${
+                    msg.role === 'user'
+                      ? 'ml-3 border-cyan-300/30 bg-cyan-300/10 text-cyan-100'
+                      : 'mr-3 border-emerald-300/30 bg-emerald-300/10 text-emerald-100'
+                  }`}
+                >
+                  {msg.role === 'user' ? <User size={20} /> : <Bot size={20} />}
+                </div>
+                <div
+                  className={`rounded-2xl border p-4 text-sm leading-6 ${
+                    msg.role === 'user'
+                      ? 'border-cyan-300/30 bg-cyan-300/10 text-cyan-50'
+                      : 'border-white/10 bg-slate-950/70 text-slate-200'
+                  }`}
+                >
+                  <div className="whitespace-pre-wrap">{msg.content}</div>
+                  {msg.timestamp && (
+                    <div className="mt-3 text-xs opacity-60">
+                      {formatMessageTime(msg.timestamp)}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
-          </div>
-        )}
-      </div>
+          ))}
 
-      <div className="mt-5 rounded-3xl border border-white/10 bg-white/[0.04] p-3 sm:p-4">
-        <div className="relative">
-          <input
-            type="text"
-            className="w-full rounded-2xl border border-white/10 bg-slate-950/70 px-5 py-4 pr-16 outline-none transition placeholder:text-slate-500 focus:border-cyan-300/60"
-            placeholder="Ask about CodeGuard scans, fixes, auth, uploads, reports..."
-            value={input}
-            onChange={e => setInput(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && !e.shiftKey && handleSend()}
-            disabled={loading}
-          />
-          <button 
-            onClick={handleSend}
-            disabled={loading || !input.trim()}
-            className="absolute right-2 top-2 rounded-xl border border-cyan-300/30 bg-cyan-300/10 p-2 text-cyan-100 transition hover:bg-cyan-300/15 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            <Send size={20} />
-          </button>
-        </div>
-        <p className="mt-2 text-xs text-slate-500">
-          Press Enter to send, Shift+Enter for new line
-        </p>
-      </div>
+          {loading && (
+            <div className="flex justify-start">
+              <div className="flex max-w-[82%]">
+                <div className="mr-3 flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-emerald-300/30 bg-emerald-300/10 text-emerald-100">
+                  <Bot size={20} />
+                </div>
+                <div className="rounded-2xl border border-white/10 bg-slate-950/70 p-4 text-slate-200">
+                  <div className="flex gap-1">
+                    <div className="h-2 w-2 animate-bounce rounded-full bg-slate-400" />
+                    <div className="h-2 w-2 animate-bounce rounded-full bg-slate-400 [animation-delay:0.1s]" />
+                    <div className="h-2 w-2 animate-bounce rounded-full bg-slate-400 [animation-delay:0.2s]" />
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+          <div ref={endRef} />
+        </section>
+
+        <form onSubmit={handleSubmit} className="mt-4 rounded-3xl border border-white/10 bg-white/[0.04] p-3 sm:p-4">
+          <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
+            <textarea
+              className="min-h-24 resize-none rounded-2xl border border-white/10 bg-slate-950/70 px-4 py-3 text-sm leading-6 outline-none transition placeholder:text-slate-500 focus:border-cyan-300/60"
+              placeholder="Paste a scan finding, backend error, endpoint, or CodeGuard workflow question..."
+              value={input}
+              onChange={(event) => setInput(event.target.value.slice(0, 1600))}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' && !event.shiftKey) {
+                  event.preventDefault();
+                  sendMessage(input);
+                }
+              }}
+              disabled={loading}
+            />
+            <button
+              type="submit"
+              disabled={loading || !input.trim()}
+              className="inline-flex items-center justify-center gap-2 rounded-2xl border border-cyan-300/30 bg-cyan-300/10 px-5 py-3 text-sm font-semibold text-cyan-100 transition hover:bg-cyan-300/15 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <Send size={18} />
+              Send
+            </button>
+          </div>
+          <div className="mt-2 text-right text-xs text-slate-500">{input.length}/1600</div>
+        </form>
+      </main>
     </div>
   );
 }

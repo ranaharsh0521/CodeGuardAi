@@ -54,11 +54,13 @@ echo.
 echo Press Ctrl+C to stop the server
 echo.
 
-REM Start the server
+REM Start the server with fresh logs for a clean restart session.
+if exist backend_run.log del /q backend_run.log
+
 REM Reload mode uses Python multiprocessing on Windows and can fail with
 REM "PermissionError: [WinError 5] Access is denied" in restricted folders.
 if /I "%CODEGUARD_RELOAD%"=="1" (
-    uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload > backend_run.log 2>&1
 ) else (
-    uvicorn app.main:app --host 0.0.0.0 --port 8000
+    uvicorn app.main:app --host 0.0.0.0 --port 8000 > backend_run.log 2>&1
 )
