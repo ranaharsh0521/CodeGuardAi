@@ -1,6 +1,6 @@
 'use client';
 
-import { FormEvent, useEffect, useRef, useState } from 'react';
+import { FormEvent, Suspense, useEffect, useRef, useState } from 'react';
 import { Bot, CheckCircle, FileSearch, LockKeyhole, Send, ShieldCheck, User } from 'lucide-react';
 import { chatService, ChatMessage } from '@/lib/chat-service';
 import { useSearchParams } from 'next/navigation';
@@ -36,7 +36,7 @@ const quickPrompts = [
   },
 ];
 
-export default function ChatAssistant() {
+function ChatAssistantInner() {
   const searchParams = useSearchParams();
   const endRef = useRef<HTMLDivElement | null>(null);
   const projectIdParam = searchParams?.get('projectId') || searchParams?.get('project_id');
@@ -259,5 +259,19 @@ export default function ChatAssistant() {
         </form>
       </main>
     </div>
+  );
+}
+
+export default function ChatAssistant() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-[calc(100vh-64px)] items-center justify-center">
+          <div className="h-12 w-12 animate-spin rounded-full border-2 border-cyan-400/20 border-t-cyan-300" />
+        </div>
+      }
+    >
+      <ChatAssistantInner />
+    </Suspense>
   );
 }
