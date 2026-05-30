@@ -40,28 +40,28 @@ export function ScanCard({
   onClick,
 }: ScanCardProps) {
   const getRiskColor = () => {
-    if (risk_score < 20) return 'text-emerald-200 bg-emerald-400/10';
-    if (risk_score < 50) return 'text-amber-200 bg-amber-400/10';
-    return 'text-red-200 bg-red-400/10';
+    if (risk_score < 20) return 'text-emerald-100 bg-emerald-400/15 border border-emerald-300/20';
+    if (risk_score < 50) return 'text-amber-100 bg-amber-400/15 border border-amber-300/20';
+    return 'text-rose-100 bg-rose-400/15 border border-rose-300/20';
   };
 
   const getStatusBadge = () => {
     switch (status) {
       case 'completed':
-        return <div className="rounded-full bg-emerald-400/10 px-3 py-1 text-sm text-emerald-200">Completed</div>;
+        return <div className="rounded-full border border-emerald-300/20 bg-emerald-400/10 px-3 py-1 text-sm text-emerald-100">Completed</div>;
       case 'running':
-        return <div className="animate-pulse rounded-full bg-cyan-400/10 px-3 py-1 text-sm text-cyan-200">Running</div>;
+        return <div className="animate-pulse rounded-full border border-cyan-300/20 bg-cyan-400/10 px-3 py-1 text-sm text-cyan-100">Running</div>;
       case 'pending':
-        return <div className="rounded-full bg-white/[0.06] px-3 py-1 text-sm text-slate-300">Pending</div>;
+        return <div className="rounded-full border border-amber-300/20 bg-amber-400/10 px-3 py-1 text-sm text-amber-100">Pending</div>;
       default:
-        return <div className="rounded-full bg-red-400/10 px-3 py-1 text-sm text-red-200">Failed</div>;
+        return <div className="rounded-full border border-rose-300/20 bg-rose-400/10 px-3 py-1 text-sm text-rose-100">Failed</div>;
     }
   };
 
   return (
     <div
       onClick={onClick}
-      className="cursor-pointer rounded-3xl border border-white/10 bg-white/[0.04] p-5 transition hover:border-cyan-300/30 hover:bg-white/[0.06] sm:p-6"
+      className="card-hover cursor-pointer rounded-3xl border border-white/10 bg-gradient-to-br from-slate-950/70 via-white/[0.04] to-emerald-400/10 p-5 transition hover:border-emerald-300/30 sm:p-6"
     >
       <div className="mb-5 flex items-start justify-between gap-3">
         <div className="min-w-0">
@@ -72,15 +72,15 @@ export function ScanCard({
       </div>
 
       <div className="grid grid-cols-3 gap-3">
-        <div className="rounded-2xl bg-white/[0.04] p-3">
+        <div className="rounded-2xl border border-white/10 bg-slate-950/45 p-3">
           <p className="text-xs text-slate-400">Risk Score</p>
           <p className={`mt-1 rounded-xl px-2 py-1 text-lg font-bold ${getRiskColor()}`}>{risk_score}/100</p>
         </div>
-        <div className="rounded-2xl bg-white/[0.04] p-3">
+        <div className="rounded-2xl border border-cyan-300/10 bg-cyan-300/5 p-3">
           <p className="text-xs text-slate-400">Findings</p>
-          <p className="mt-1 text-2xl font-bold text-cyan-200">{findings_count}</p>
+          <p className="mt-1 text-2xl font-bold text-cyan-100">{findings_count}</p>
         </div>
-        <div className="rounded-2xl bg-white/[0.04] p-3">
+        <div className="rounded-2xl border border-amber-300/10 bg-amber-300/5 p-3">
           <p className="text-xs text-slate-400">Date</p>
           <p className="mt-2 text-sm text-slate-300">{new Date(created_at).toLocaleDateString()}</p>
         </div>

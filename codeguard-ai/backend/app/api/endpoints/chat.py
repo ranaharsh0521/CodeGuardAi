@@ -18,19 +18,19 @@ class ChatResponse(BaseModel):
 
 
 PROJECT_SCOPE_REPLY = (
-    "Main CodeGuard AI project assistant hoon. Main sirf is platform ke security scans, "
-    "findings, fixes, auth, reports, teams, schedules, uploads, backend/frontend errors, "
-    "aur code-security workflow par help kar sakta hoon. CodeGuard se related error, "
-    "scan finding, file path, ya question bhejo."
+    "I am the CodeGuard AI project assistant. I can help only with this platform's "
+    "security scans, findings, fixes, auth, reports, teams, schedules, uploads, "
+    "backend/frontend errors, and code-security workflow. Send a CodeGuard-related "
+    "error, scan finding, file path, or question."
 )
 
 ASSISTANT_RULES = (
-    "1. Scope: sirf CodeGuard AI, code security, scans, findings, auth, reports, uploads, teams, schedules, aur debugging.",
-    "2. Safety: secrets, tokens, passwords, ya .env values reveal/copy mat karna; rotate karne ko bolo.",
-    "3. Output: short, actionable steps; zarurat ho to exact page/API/file mention karo.",
-    "4. Vulnerabilities: risk explain karo, fix steps do, aur re-scan/triage action suggest karo.",
-    "5. Missing context: guess karne ke bajay specific scan id, file, endpoint, ya error log maango.",
-    "6. Language: user Hindi/Hinglish me pooche to Hinglish me jawab do.",
+    "1. Scope: only CodeGuard AI, code security, scans, findings, auth, reports, uploads, teams, schedules, and debugging.",
+    "2. Safety: never reveal or copy secrets, tokens, passwords, or .env values; tell the user to rotate exposed credentials.",
+    "3. Output: keep answers short and actionable; mention the exact page/API/file when useful.",
+    "4. Vulnerabilities: explain the risk, give fix steps, and suggest re-scan/triage actions.",
+    "5. Missing context: ask for a specific scan id, file, endpoint, or error log instead of guessing.",
+    "6. Language: respond in English.",
 )
 
 PROJECT_KEYWORDS = {
@@ -115,13 +115,13 @@ def _local_assistant_reply(message: str) -> str:
     text = message.strip().lower()
     if not text:
         return (
-            "CodeGuard AI Assistant ready hai.\n\n"
-            "Aap pooch sakte ho:\n"
-            "- scan kaise start/verify karein\n"
-            "- finding ka risk aur fix\n"
+            "CodeGuard AI Assistant is ready.\n\n"
+            "You can ask about:\n"
+            "- how to start or verify a scan\n"
+            "- finding risk and fixes\n"
             "- OAuth/login/backend error\n"
             "- project detail, comparison, reports, teams, schedules\n\n"
-            "Specific scan id, error log, ya code snippet bhejo."
+            "Send a specific scan id, error log, or code snippet."
         )
 
     if not _is_project_related(message):
@@ -129,13 +129,13 @@ def _local_assistant_reply(message: str) -> str:
 
     if any(word in text for word in GREETING_WORDS):
         return (
-            "Namaste! Main CodeGuard AI Assistant hoon.\n\n"
-            "Main project ke andar ye help karta hoon:\n"
-            "- scans aur findings explain/fix\n"
-            "- auth/OAuth/JWT errors debug\n"
+            "Hello! I am the CodeGuard AI Assistant.\n\n"
+            "I can help with these project areas:\n"
+            "- explain and fix scans and findings\n"
+            "- debug auth/OAuth/JWT errors\n"
             "- upload, reports, teams, schedules workflow\n"
             "- FastAPI/Next.js project errors\n\n"
-            "Apna error, scan id, finding, ya code paste karo."
+            "Paste your error, scan id, finding, or code."
         )
 
     if any(word in text for word in ["rule", "rules", "scope", "allowed", "chat"]):
@@ -147,12 +147,12 @@ def _local_assistant_reply(message: str) -> str:
     if any(word in text for word in ["scan", "finding", "vulnerability", "security", "risk", "semgrep", "gitleaks"]):
         return (
             "CodeGuard scan workflow:\n"
-            "1. Dashboard se project create/import karo ya /upload se files bhejo\n"
-            "2. Scan Now click karo; progress /results/{scan_id} par live dikhega\n"
-            "3. Critical/error findings pehle fix karo\n"
-            "4. Finding status use karo: open, resolved, ignored, false_positive\n"
-            "5. Fix ke baad dobara scan run karo aur comparison/risk trend check karo\n\n"
-            "Agar aap finding paste karoge, main exact risk aur fix steps dunga."
+            "1. Create or import a project from the dashboard, or upload files from /upload\n"
+            "2. Click Scan Now; progress appears live on /results/{scan_id}\n"
+            "3. Fix critical/error findings first\n"
+            "4. Use finding statuses: open, resolved, ignored, false_positive\n"
+            "5. Run another scan after fixing issues and check the comparison/risk trend\n\n"
+            "If you paste a finding, I can explain the exact risk and fix steps."
         )
 
     if any(word in text for word in ["password", "jwt", "token", "auth", "login", "oauth", "github", "google"]):
@@ -162,9 +162,9 @@ def _local_assistant_reply(message: str) -> str:
             "- Google callback URI: http://localhost:8000/api/v1/auth/google/callback\n"
             "- GitHub callback URI: http://localhost:8000/api/v1/auth/github/callback\n"
             "- Frontend callback page: /auth/oauth/callback\n"
-            "- JWT token localStorage me store hota hai; protected APIs get_current_user use karte hain\n"
-            "- .env secrets frontend me expose mat karo; leaked credentials rotate karo\n\n"
-            "Agar 500/redirect issue hai, backend_run.log ka latest traceback bhejo."
+            "- The JWT token is stored in localStorage; protected APIs use get_current_user\n"
+            "- Do not expose .env secrets in the frontend; rotate leaked credentials\n\n"
+            "For a 500 or redirect issue, send the latest traceback from backend_run.log."
         )
 
     if any(word in text for word in ["upload", "file", "scan upload", "zip", "code upload"]):
@@ -173,9 +173,9 @@ def _local_assistant_reply(message: str) -> str:
             "- Frontend page: /upload\n"
             "- Backend API: POST /api/v1/upload/upload-scan\n"
             "- Supported extensions API: GET /api/v1/upload/supported-extensions\n"
-            "- Upload ke baad scan result /results/{scan_id} par open hota hai\n"
-            "- ZIP/local files scan karte waqt node_modules, .next, venv jaise folders skip hote hain\n\n"
-            "Upload fail ho raha hai to file type, size, aur backend_run.log ka error bhejo."
+            "- After upload, the scan result opens on /results/{scan_id}\n"
+            "- ZIP/local scans skip folders such as node_modules, .next, and venv\n\n"
+            "If upload fails, send the file type, size, and backend_run.log error."
         )
 
     if any(word in text for word in ["report", "pdf", "export", "download"]):
@@ -183,41 +183,41 @@ def _local_assistant_reply(message: str) -> str:
             "CodeGuard reports:\n"
             "- PDF: GET /api/v1/reports/{scan_id}/pdf\n"
             "- JSON: GET /api/v1/reports/{scan_id}/json\n"
-            "- UI: /results/{scan_id} par PDF/JSON buttons\n"
-            "- Report tabhi useful hai jab scan completed ho\n\n"
-            "Report error aaye to scan id aur response status bhejo."
+            "- UI: PDF/JSON buttons on /results/{scan_id}\n"
+            "- Reports are useful after a scan has completed\n\n"
+            "For report errors, send the scan id and response status."
         )
 
     if any(word in text for word in ["fix", "bug", "error", "crash", "500", "404", "cors"]):
         return (
             "CodeGuard debug steps:\n"
-            "1. Backend error: backend/backend_run.log ka latest traceback check karo\n"
-            "2. Frontend error: frontend/frontend_run.log aur browser console check karo\n"
-            "3. API docs: http://localhost:8000/docs par endpoint test karo\n"
+            "1. Backend error: check the latest traceback in backend/backend_run.log\n"
+            "2. Frontend error: check frontend/frontend_run.log and the browser console\n"
+            "3. API docs: test the endpoint at http://localhost:8000/docs\n"
             "4. 401: token/login issue; 403: permission issue; 404: id/route issue; 500: backend traceback\n"
-            "5. Fix ke baad npm run lint, npm run build, aur backend verify script run karo\n\n"
-            "Exact error paste karo, main file-level fix bataunga."
+            "5. After fixing, run npm run lint, npm run build, and the backend verify script\n\n"
+            "Paste the exact error and I can point to the file-level fix."
         )
 
     if any(word in text for word in ["team", "member", "invite", "project"]):
         return (
             "CodeGuard teams/projects:\n"
-            "- Projects dashboard par create/import hote hain\n"
+            "- Projects are created/imported from the dashboard\n"
             "- Project detail page: /projects/{project_id}\n"
-            "- Team page: /teams; owner/admin invite kar sakte hain\n"
-            "- Shared team projects members ko visible hote hain\n"
-            "- Scan history project detail aur /scans dono jagah dikhti hai\n\n"
-            "Project access issue ho to user role, team id, aur project id bhejo."
+            "- Team page: /teams; owners/admins can invite members\n"
+            "- Shared team projects are visible to members\n"
+            "- Scan history appears on both the project detail page and /scans\n\n"
+            "For project access issues, send the user role, team id, and project id."
         )
 
     if any(word in text for word in ["compare", "comparison", "trend", "resolved", "ignored", "false positive", "false_positive"]):
         return (
             "CodeGuard comparison/triage:\n"
-            "- Results page par finding status set karo: open/resolved/ignored/false_positive\n"
-            "- Project detail page latest scan ko previous completed scan se compare karta hai\n"
+            "- Set finding status on the results page: open/resolved/ignored/false_positive\n"
+            "- The project detail page compares the latest scan with the previous completed scan\n"
             "- Comparison metrics: new findings, resolved findings, unchanged findings, risk delta\n"
-            "- Risk trend last completed scans ka visual summary dikhata hai\n\n"
-            "Agar comparison galat lag raha hai to current scan id aur base scan id bhejo."
+            "- Risk trend shows a visual summary of recent completed scans\n\n"
+            "If the comparison looks wrong, send the current scan id and base scan id."
         )
 
     if any(word in text for word in ["run", "start", "uvicorn", "next", "localhost", "port"]):
@@ -234,12 +234,12 @@ def _local_assistant_reply(message: str) -> str:
         )
 
     return (
-        "Main CodeGuard AI Assistant hoon. Main project-specific help deta hoon:\n"
+        "I am the CodeGuard AI Assistant. I provide project-specific help for:\n"
         "- scans, findings, risk score, comparison\n"
         "- auth/OAuth/JWT/login\n"
         "- upload, reports, teams, schedules\n"
-        "- FastAPI backend aur Next.js frontend errors\n\n"
-        "Please exact error, endpoint, scan id, ya code snippet bhejo."
+        "- FastAPI backend and Next.js frontend errors\n\n"
+        "Please send the exact error, endpoint, scan id, or code snippet."
     )
 
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
@@ -17,11 +17,15 @@ import {
 import { GitHubRepository, projectService, Project } from '@/lib/project-service';
 import { scanService, Scan } from '@/lib/scan-service';
 import { authService } from '@/lib/auth-service';
+import { APIRequestError } from '@/lib/api-client';
 import { teamService, Team } from '@/lib/team-service';
 import { useAppStore } from '@/store';
 import { ScanCard } from '@/components/ui/scan-card';
 
 type DashboardScan = Scan & { project_id: number; created_at: string; status: string; risk_score: number };
+type LoadGitHubReposOptions = {
+  skipConnectRedirect?: boolean;
+};
 
 export default function Dashboard() {
   const router = useRouter();
@@ -42,6 +46,38 @@ export default function Dashboard() {
   const [githubReposLoading, setGithubReposLoading] = useState(false);
   const [selectedRepoId, setSelectedRepoId] = useState('');
   const [repoSearch, setRepoSearch] = useState('');
+
+  const loadGitHubRepos = useCallback(async (options: LoadGitHubReposOptions = {}) => {
+    setErrorMsg('');
+    setGithubReposLoading(true);
+    try {
+      const repos = await projectService.getGitHubRepositories();
+      setGithubRepos(repos);
+      setGithubReposLoading(false);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Unable to load GitHub repositories. Connect GitHub first.';
+      const shouldConnectGitHub =
+        message.toLowerCase().includes('github') &&
+        (message.toLowerCase().includes('connect') ||
+          message.toLowerCase().includes('expired') ||
+          err instanceof APIRequestError);
+
+      if (shouldConnectGitHub && !options.skipConnectRedirect) {
+        setErrorMsg('Connecting GitHub...');
+        localStorage.setItem('oauth_return_to', '/dashboard?loadGithubRepos=1&githubConnected=1');
+        try {
+          await authService.loginWithGithub();
+        } catch (loginErr: unknown) {
+          setErrorMsg(loginErr instanceof Error ? loginErr.message : message);
+          setGithubReposLoading(false);
+        }
+        return;
+      }
+
+      setErrorMsg(message);
+      setGithubReposLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     const initDashboard = async () => {
@@ -74,6 +110,17 @@ export default function Dashboard() {
     initDashboard();
   }, [router, setUser]);
 
+  useEffect(() => {
+    if (loading) return;
+
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('loadGithubRepos') !== '1') return;
+
+    setShowNewProject(true);
+    window.history.replaceState({}, document.title, window.location.pathname);
+    void loadGitHubRepos({ skipConnectRedirect: params.get('githubConnected') === '1' });
+  }, [loadGitHubRepos, loading]);
+
   const handleCreateProject = async () => {
     if (!newProjectName.trim()) return;
     setErrorMsg('');
@@ -93,19 +140,6 @@ export default function Dashboard() {
       setShowNewProject(false);
     } catch (err: unknown) {
       setErrorMsg(err instanceof Error ? err.message : 'Failed to create project. Please try again.');
-    }
-  };
-
-  const loadGitHubRepos = async () => {
-    setErrorMsg('');
-    setGithubReposLoading(true);
-    try {
-      const repos = await projectService.getGitHubRepositories();
-      setGithubRepos(repos);
-    } catch (err: unknown) {
-      setErrorMsg(err instanceof Error ? err.message : 'Unable to load GitHub repositories. Connect GitHub first.');
-    } finally {
-      setGithubReposLoading(false);
     }
   };
 
@@ -170,14 +204,14 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen px-4 py-6 text-white sm:px-6 lg:px-8">
       <div className="mx-auto max-w-7xl">
-        <header className="mb-8 overflow-hidden rounded-3xl border border-white/10 bg-white/[0.04] p-5 shadow-2xl shadow-black/20 sm:p-8">
+        <header className="mb-8 overflow-hidden rounded-3xl border border-cyan-200/20 bg-gradient-to-br from-cyan-400/12 via-slate-950/70 to-rose-400/12 p-5 shadow-2xl shadow-cyan-950/25 sm:p-8">
           <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
             <div className="max-w-3xl">
-              <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-cyan-300/20 bg-cyan-300/10 px-3 py-1 text-xs font-semibold text-cyan-100">
+              <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-emerald-200/30 bg-emerald-300/10 px-3 py-1 text-xs font-semibold text-emerald-100">
                 <Sparkles size={14} />
                 AI powered code security
               </div>
-              <h1 className="text-3xl font-bold tracking-normal text-white sm:text-5xl">
+              <h1 className="max-w-3xl bg-gradient-to-r from-white via-cyan-100 to-amber-100 bg-clip-text text-3xl font-bold tracking-normal text-transparent sm:text-5xl">
                 Secure your codebase with a cleaner command center.
               </h1>
               <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-400 sm:text-base">
@@ -187,14 +221,14 @@ export default function Dashboard() {
             <div className="flex flex-col gap-3 sm:flex-row">
               <Link
                 href="/upload"
-                className="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/[0.06] px-4 py-3 text-sm font-semibold text-slate-100 transition hover:bg-white/[0.1]"
+                className="inline-flex items-center justify-center gap-2 rounded-2xl border border-amber-200/20 bg-amber-300/10 px-4 py-3 text-sm font-semibold text-amber-100 transition hover:bg-amber-300/15"
               >
                 <Upload size={18} />
                 Upload Files
               </Link>
               <button
                 onClick={() => setShowNewProject(true)}
-                className="inline-flex items-center justify-center gap-2 rounded-2xl border border-cyan-300/30 bg-cyan-300/10 px-4 py-3 text-sm font-semibold text-cyan-100 transition hover:bg-cyan-300/15"
+                className="inline-flex items-center justify-center gap-2 rounded-2xl border border-cyan-300/30 bg-cyan-300/10 px-4 py-3 text-sm font-semibold text-cyan-100 transition hover:bg-cyan-300/15 hover:shadow-lg hover:shadow-cyan-500/10"
               >
                 <Plus size={18} />
                 New Project
@@ -214,19 +248,38 @@ export default function Dashboard() {
 
         <div className="mb-10 grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-5">
           {[
-            { label: 'Total Projects', value: projects.length, icon: FolderGit2, tone: 'text-cyan-300' },
-            { label: 'Total Scans', value: totalScans, icon: Activity, tone: 'text-emerald-300' },
-            { label: 'Avg Risk Score', value: averageRisk, icon: ShieldAlert, tone: 'text-amber-300' },
+            {
+              label: 'Total Projects',
+              value: projects.length,
+              icon: FolderGit2,
+              tone: 'text-cyan-200',
+              panel: 'from-cyan-400/15 to-blue-400/5',
+            },
+            {
+              label: 'Total Scans',
+              value: totalScans,
+              icon: Activity,
+              tone: 'text-emerald-200',
+              panel: 'from-emerald-400/15 to-teal-400/5',
+            },
+            {
+              label: 'Avg Risk Score',
+              value: averageRisk,
+              icon: ShieldAlert,
+              tone: 'text-amber-200',
+              panel: 'from-amber-400/15 to-orange-400/5',
+            },
             {
               label: 'Secure Scans',
               value: recentScans.filter((scan) => scan.risk_score < 30).length,
               icon: CheckCircle,
-              tone: 'text-emerald-300',
+              tone: 'text-rose-200',
+              panel: 'from-rose-400/15 to-fuchsia-400/5',
             },
           ].map((stat) => {
             const Icon = stat.icon;
             return (
-              <div key={stat.label} className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 sm:p-5">
+              <div key={stat.label} className={`card-hover rounded-2xl border border-white/10 bg-gradient-to-br ${stat.panel} p-4 sm:p-5`}>
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <p className="text-xs font-medium text-slate-400 sm:text-sm">{stat.label}</p>
@@ -247,7 +300,7 @@ export default function Dashboard() {
             </div>
             <button
               onClick={() => setShowNewProject(!showNewProject)}
-              className="inline-flex items-center justify-center gap-2 rounded-2xl border border-cyan-300/30 bg-cyan-300/10 px-4 py-3 text-sm font-semibold text-cyan-100 transition hover:bg-cyan-300/15"
+              className="inline-flex items-center justify-center gap-2 rounded-2xl border border-cyan-300/30 bg-cyan-300/10 px-4 py-3 text-sm font-semibold text-cyan-100 transition hover:bg-cyan-300/15 hover:shadow-lg hover:shadow-cyan-500/10"
             >
               <Plus size={20} />
               New Project
@@ -255,9 +308,9 @@ export default function Dashboard() {
           </div>
 
           {showNewProject && (
-            <div className="mb-6 rounded-3xl border border-white/10 bg-slate-950/70 p-5 shadow-2xl shadow-black/20 sm:p-6">
+            <div className="mb-6 rounded-3xl border border-cyan-200/20 bg-slate-950/70 p-5 shadow-2xl shadow-cyan-950/20 sm:p-6">
               <h3 className="mb-4 text-lg font-semibold">Create New Project</h3>
-              <div className="mb-4 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+              <div className="mb-4 rounded-2xl border border-emerald-200/20 bg-emerald-300/5 p-4">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <p className="font-semibold text-slate-100">Import from GitHub</p>
@@ -265,7 +318,7 @@ export default function Dashboard() {
                   </div>
                   <button
                     type="button"
-                    onClick={loadGitHubRepos}
+                    onClick={() => void loadGitHubRepos()}
                     disabled={githubReposLoading}
                     className="inline-flex items-center justify-center gap-2 rounded-2xl border border-cyan-300/30 bg-cyan-300/10 px-4 py-3 text-sm font-semibold text-cyan-100 transition hover:bg-cyan-300/15 disabled:cursor-not-allowed disabled:opacity-60"
                   >
@@ -361,7 +414,7 @@ export default function Dashboard() {
             {projects.map((project) => (
               <div
                 key={project.id}
-                className="rounded-3xl border border-white/10 bg-white/[0.04] p-5 transition hover:border-cyan-300/30 hover:bg-white/[0.06] sm:p-6"
+                className="card-hover rounded-3xl border border-white/10 bg-gradient-to-br from-slate-950/70 via-white/[0.04] to-cyan-400/10 p-5 transition hover:border-cyan-300/30 sm:p-6"
               >
                 <div className="mb-4 flex items-start justify-between gap-3">
                   <div className="min-w-0">
@@ -370,7 +423,7 @@ export default function Dashboard() {
                       <p className="mt-1 truncate text-xs text-slate-500">{project.repository_url}</p>
                     )}
                   </div>
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-cyan-300/10 text-cyan-200">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-cyan-300/20 to-emerald-300/20 text-cyan-100">
                     <FolderGit2 size={20} />
                   </div>
                 </div>
@@ -387,7 +440,7 @@ export default function Dashboard() {
                   </Link>
                   <button
                     onClick={() => handleTriggerScan(project.id)}
-                    className="inline-flex items-center justify-center gap-2 rounded-2xl border border-cyan-300/30 bg-cyan-300/10 px-4 py-3 font-semibold text-cyan-100 transition hover:bg-cyan-300/15"
+                    className="inline-flex items-center justify-center gap-2 rounded-2xl border border-cyan-300/30 bg-gradient-to-r from-cyan-300/15 to-emerald-300/15 px-4 py-3 font-semibold text-cyan-100 transition hover:from-cyan-300/20 hover:to-emerald-300/20"
                   >
                     Scan Now
                     <ArrowRight size={18} />

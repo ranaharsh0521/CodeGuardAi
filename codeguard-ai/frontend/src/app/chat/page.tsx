@@ -46,7 +46,7 @@ function ChatAssistantInner() {
     {
       role: 'assistant',
       content:
-        'Namaste! Main CodeGuard AI Assistant hoon. Main project ke scans, findings, auth/OAuth, uploads, reports, teams, schedules, aur FastAPI/Next.js debugging me help karta hoon. Guest mode me bhi pooch sakte ho.',
+        'Hello! I am the CodeGuard AI Assistant. I can help with project scans, findings, auth/OAuth, uploads, reports, teams, schedules, and FastAPI/Next.js debugging. You can also ask questions in guest mode.',
     },
   ]);
   const [input, setInput] = useState('');

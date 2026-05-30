@@ -43,8 +43,10 @@ function OAuthCallbackInner() {
 
         if (!cancelled) {
           setUser(user);
-          // Step 4: Go to dashboard
-          router.replace('/dashboard');
+          const returnTo = localStorage.getItem('oauth_return_to') || '/dashboard';
+          localStorage.removeItem('oauth_return_to');
+          // Step 4: Go back to the workflow that started OAuth
+          router.replace(returnTo);
         }
       } catch (err: unknown) {
         if (!cancelled) {

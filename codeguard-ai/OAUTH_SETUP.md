@@ -2,28 +2,28 @@
 
 ## GitHub OAuth
 
-1. Ja: https://github.com/settings/developers
-2. "New OAuth App" click karo
-3. Fill karo:
+1. Go to: https://github.com/settings/developers
+2. Click "New OAuth App"
+3. Fill in:
    - Application name: `CodeGuard AI`
    - Homepage URL: `http://localhost:3000`
    - Authorization callback URL: `http://localhost:8000/api/v1/auth/github/callback`
-4. "Register application" karo
-5. Client ID copy karo
-6. "Generate a new client secret" karo aur woh bhi copy karo
+4. Click "Register application"
+5. Copy the Client ID
+6. Click "Generate a new client secret" and copy that too
 
 ## Google OAuth
 
-1. Ja: https://console.cloud.google.com/apis/credentials
-2. Project banao (ya existing select karo)
-3. "OAuth consent screen" configure karo (External, test mode theek hai)
+1. Go to: https://console.cloud.google.com/apis/credentials
+2. Create a project, or select an existing one
+3. Configure the "OAuth consent screen" (External in test mode is fine)
 4. "Create Credentials" → "OAuth 2.0 Client IDs"
 5. Application type: `Web application`
-6. Authorized redirect URIs mein add karo:
+6. Add this under Authorized redirect URIs:
    `http://localhost:8000/api/v1/auth/google/callback`
-7. Client ID aur Client Secret copy karo
+7. Copy the Client ID and Client Secret
 
-## backend/.env mein fill karo
+## Fill In backend/.env
 
 ```
 GITHUB_CLIENT_ID="paste_github_client_id_here"
@@ -33,7 +33,7 @@ GOOGLE_CLIENT_ID="paste_google_client_id_here"
 GOOGLE_CLIENT_SECRET="paste_google_client_secret_here"
 ```
 
-## Backend restart karo
+## Restart The Backend
 
 ```bash
 cd codeguard-ai/backend
@@ -41,4 +41,4 @@ cd codeguard-ai/backend
 start.bat
 ```
 
-Bas! Login/Signup page pe GitHub aur Google buttons automatically enable ho jayenge.
+Done. The GitHub and Google buttons on the Login/Signup pages will enable automatically.

@@ -1,44 +1,62 @@
 @import "tailwindcss";
 
 :root {
-  --background: #0a0a0a;
+  --background: #070816;
   --foreground: #fafafa;
-  --card: #0a0a0a;
+  --card: #111827;
   --card-foreground: #fafafa;
-  --popover: #0a0a0a;
+  --popover: #111827;
   --popover-foreground: #fafafa;
   --primary: #fafafa;
-  --primary-foreground: #0a0a0a;
-  --secondary: #262626;
+  --primary-foreground: #070816;
+  --secondary: #172033;
   --secondary-foreground: #fafafa;
-  --muted: #262626;
-  --muted-foreground: #a3a3a3;
-  --accent: #262626;
+  --muted: #172033;
+  --muted-foreground: #b6c2d3;
+  --accent: #243047;
   --accent-foreground: #fafafa;
   --destructive: #dc2626;
   --destructive-foreground: #fafafa;
-  --border: #262626;
-  --input: #262626;
-  --ring: #d4d4d8;
+  --border: #334155;
+  --input: #1e293b;
+  --ring: #38bdf8;
   --radius: 0.5rem;
 }
 
 * {
-  border-color: hsl(var(--border));
+  border-color: var(--border);
   box-sizing: border-box;
 }
 
 body {
-  background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%);
-  color: hsl(var(--foreground));
+  min-height: 100vh;
+  background:
+    linear-gradient(120deg, rgba(45, 212, 191, 0.16), transparent 28%),
+    linear-gradient(240deg, rgba(244, 114, 182, 0.14), transparent 30%),
+    linear-gradient(180deg, #08111f 0%, #0d1024 48%, #111827 100%);
+  color: var(--foreground);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
+body::before {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  content: "";
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+    linear-gradient(135deg, rgba(56, 189, 248, 0.12), transparent 38%, rgba(251, 191, 36, 0.08) 62%, transparent);
+  background-size: 44px 44px, 44px 44px, 100% 100%;
+  mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.82), rgba(0, 0, 0, 0.18));
+}
+
 ::selection {
-  background: rgba(59, 130, 246, 0.3);
+  background: rgba(45, 212, 191, 0.35);
   color: white;
 }
 
@@ -48,28 +66,29 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-  background: #1a1a1a;
+  background: #0f172a;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #404040;
+  background: linear-gradient(180deg, #38bdf8, #a78bfa, #fb7185);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #525252;
+  background: linear-gradient(180deg, #67e8f9, #c4b5fd, #fda4af);
 }
 
 /* Glass morphism effect */
 .glass {
-  background: rgba(255, 255, 255, 0.05);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(15, 23, 42, 0.72);
+  backdrop-filter: blur(18px);
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  box-shadow: 0 20px 60px rgba(2, 6, 23, 0.22);
 }
 
 /* Gradient text */
 .gradient-text {
-  background: linear-gradient(135deg, #3b82f6, #8b5cf6, #06b6d4);
+  background: linear-gradient(135deg, #38bdf8, #34d399 35%, #fbbf24 65%, #fb7185);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -77,8 +96,9 @@ body {
 
 /* Animated gradient background */
 .animated-bg {
-  background: linear-gradient(-45deg, #0a0a0a, #1a1a1a, #0f172a, #1e293b);
-  background-size: 400% 400%;
+  background:
+    linear-gradient(-45deg, #07111f, #10233b, #16213f, #201334, #10251f);
+  background-size: 500% 500%;
   animation: gradient 15s ease infinite;
 }
 
@@ -90,15 +110,15 @@ body {
 
 /* Button hover effects */
 .btn-glow:hover {
-  box-shadow: 0 0 20px rgba(59, 130, 246, 0.4);
+  box-shadow: 0 0 24px rgba(45, 212, 191, 0.3), 0 0 44px rgba(251, 113, 133, 0.16);
   transform: translateY(-1px);
   transition: all 0.3s ease;
 }
 
 /* Card hover effects */
 .card-hover:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+  transform: translateY(-3px);
+  box-shadow: 0 22px 50px rgba(2, 6, 23, 0.34), 0 0 34px rgba(56, 189, 248, 0.11);
   transition: all 0.3s ease;
 }
 

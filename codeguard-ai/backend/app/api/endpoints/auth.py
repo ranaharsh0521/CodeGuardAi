@@ -3,15 +3,18 @@ from fastapi.responses import RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from datetime import timedelta
+from typing import Optional
 from urllib.parse import urlencode
+from jose import JWTError, jwt
 import httpx
 import secrets
 
 from app.core.database import get_db
 from app.core.config import settings
-from app.core.security import create_access_token, verify_password, get_password_hash
+from app.core.security import ALGORITHM, create_access_token, verify_password, get_password_hash
 from app.models.user import User
 from app.schemas.user import UserCreate, UserLogin, Token, UserResponse
+from app.api.dependencies import get_current_user_optional
 
 router = APIRouter()
 
@@ -150,7 +153,7 @@ async def logout():
 
 
 @router.get("/github/login")
-async def github_login():
+async def github_login(current_user: Optional[User] = Depends(get_current_user_optional)):
     """Return GitHub OAuth authorization URL."""
     if not settings.GITHUB_CLIENT_ID:
         if _dev_oauth_fallback_enabled():
@@ -159,21 +162,32 @@ async def github_login():
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="GitHub OAuth not configured. Set GITHUB_CLIENT_ID and GITHUB_CLIENT_SECRET in .env",
         )
-    params = urlencode(
-        {
-            "client_id": settings.GITHUB_CLIENT_ID,
-            "redirect_uri": settings.GITHUB_REDIRECT_URI,
-            "scope": "read:user user:email repo",
-        }
-    )
-    return {"authorization_url": f"https://github.com/login/oauth/authorize?{params}"}
+    params = {
+        "client_id": settings.GITHUB_CLIENT_ID,
+        "redirect_uri": settings.GITHUB_REDIRECT_URI,
+        "scope": "read:user user:email repo",
+    }
+    if current_user:
+        params["state"] = create_access_token(subject=current_user.id, expires_delta=timedelta(minutes=10))
+    return {"authorization_url": f"https://github.com/login/oauth/authorize?{urlencode(params)}"}
 
 
 @router.get("/github/callback")
-async def github_callback(code: str, db: AsyncSession = Depends(get_db)):
-    """Exchange GitHub code for token, create/login user, redirect to frontend."""
+async def github_callback(code: str, state: Optional[str] = None, db: AsyncSession = Depends(get_db)):
+    """Exchange GitHub code for token, create/login/link user, redirect to frontend."""
     if not settings.GITHUB_CLIENT_ID or not settings.GITHUB_CLIENT_SECRET:
         raise HTTPException(status_code=503, detail="GitHub OAuth not configured")
+
+    link_user: Optional[User] = None
+    if state:
+        try:
+            payload = jwt.decode(state, settings.SECRET_KEY, algorithms=[ALGORITHM])
+            raw_sub = payload.get("sub")
+            if raw_sub is not None:
+                result = await db.execute(select(User).filter(User.id == int(raw_sub)))
+                link_user = result.scalars().first()
+        except (JWTError, TypeError, ValueError):
+            link_user = None
 
     try:
         async with httpx.AsyncClient(timeout=15.0, trust_env=False) as client:
@@ -221,10 +235,20 @@ async def github_callback(code: str, db: AsyncSession = Depends(get_db)):
         )
 
     github_id = str(gh_user["id"])
-    result = await db.execute(select(User).filter(User.github_id == github_id))
-    user = result.scalars().first()
+    if link_user:
+        result = await db.execute(select(User).filter(User.github_id == github_id))
+        existing_github_user = result.scalars().first()
+        if existing_github_user and existing_github_user.id != link_user.id:
+            return _oauth_error_redirect(
+                "github",
+                "This GitHub account is already connected to another CodeGuard account.",
+            )
+        user = link_user
+    else:
+        result = await db.execute(select(User).filter(User.github_id == github_id))
+        user = result.scalars().first()
 
-    if not user:
+    if not user and not link_user:
         email_result = await db.execute(select(User).filter(User.email == email))
         user = email_result.scalars().first()
 
