@@ -22,8 +22,8 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" className="dark">
-      <body className="animated-bg text-white min-h-screen antialiased overflow-x-hidden">
+    <html lang="en" suppressHydrationWarning>
+      <body className="apple-ui animated-bg min-h-screen overflow-x-hidden text-slate-950 antialiased">
         <ErrorBoundary>
           <AuthProvider>
             <div className="relative">

@@ -3,10 +3,11 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Mail, Lock, ArrowRight, Eye, EyeOff, GitBranch } from 'lucide-react';
+import { Mail, Lock, ArrowRight, Eye, EyeOff, Loader2 } from 'lucide-react';
 import { authService } from '@/lib/auth-service';
 import { apiClient } from '@/lib/api-client';
 import { useAppStore } from '@/store';
+import { GitHubLogo, GoogleLogo } from '@/components/ui/provider-icons';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -58,7 +59,7 @@ export default function LoginPage() {
       <div className="glass w-full max-w-md rounded-2xl border border-cyan-200/20 p-8 shadow-2xl shadow-cyan-950/30">
         <div className="text-center mb-8">
           <div className="mx-auto mb-4 h-1.5 w-28 rounded-full bg-gradient-to-r from-cyan-300 via-emerald-300 to-rose-300" />
-          <h1 className="mb-2 bg-gradient-to-r from-cyan-200 via-emerald-200 to-amber-200 bg-clip-text text-3xl font-bold text-transparent">
+          <h1 className="mb-2 bg-gradient-to-r from-sky-700 via-emerald-600 to-rose-600 bg-clip-text text-3xl font-bold text-transparent">
             Welcome Back
           </h1>
           <p className="text-sm text-slate-300">Sign in to your CodeGuard AI account</p>
@@ -85,12 +86,19 @@ export default function LoginPage() {
               }
             }}
             title={googleEnabled ? 'Continue with Google' : 'Add Google OAuth credentials in backend/.env'}
-            className="flex w-full items-center justify-center gap-2 rounded-lg border border-cyan-200/20 bg-slate-950/60 py-3 font-medium text-slate-100 transition hover:border-cyan-200/40 hover:bg-cyan-300/10 disabled:cursor-not-allowed disabled:opacity-60"
+            className="group flex w-full items-center justify-between rounded-2xl border border-slate-200/80 bg-white/80 px-4 py-3.5 font-semibold text-slate-900 shadow-sm shadow-slate-200/70 transition hover:-translate-y-0.5 hover:border-sky-200 hover:bg-white hover:shadow-xl hover:shadow-sky-100/80 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            <span className="flex h-5 w-5 items-center justify-center rounded-full border border-cyan-200/40 text-sm font-bold text-cyan-100">
-              G
+            <span className="flex items-center gap-3">
+              <span className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white shadow-inner">
+                <GoogleLogo className="h-5 w-5" />
+              </span>
+              <span>{googleLoading ? 'Redirecting...' : googleEnabled ? 'Continue with Google' : 'Google not configured'}</span>
             </span>
-            {googleLoading ? 'Redirecting...' : googleEnabled ? 'Continue with Google' : 'Google not configured'}
+            {googleLoading ? (
+              <Loader2 className="animate-spin text-sky-600" size={18} />
+            ) : (
+              <ArrowRight className="text-slate-400 transition group-hover:translate-x-1 group-hover:text-sky-600" size={18} />
+            )}
           </button>
 
           <button
@@ -107,10 +115,19 @@ export default function LoginPage() {
               }
             }}
             title={githubEnabled ? 'Continue with GitHub' : 'Add GitHub OAuth credentials in backend/.env'}
-            className="flex w-full items-center justify-center gap-2 rounded-lg border border-emerald-200/20 bg-emerald-300/10 py-3 font-medium text-emerald-50 transition hover:border-emerald-200/40 hover:bg-emerald-300/15 disabled:cursor-not-allowed disabled:opacity-60"
+            className="group flex w-full items-center justify-between rounded-2xl border border-slate-900/10 bg-[#111827] px-4 py-3.5 font-semibold text-[#ffffff] shadow-lg shadow-slate-300/60 transition hover:-translate-y-0.5 hover:bg-[#0f172a] hover:shadow-xl hover:shadow-slate-300/80 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            <GitBranch size={20} />
-            {githubLoading ? 'Redirecting...' : githubEnabled ? 'Continue with GitHub' : 'GitHub not configured'}
+            <span className="flex items-center gap-3">
+              <span className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/10 text-[#ffffff]">
+                <GitHubLogo className="h-5 w-5" />
+              </span>
+              <span>{githubLoading ? 'Redirecting...' : githubEnabled ? 'Continue with GitHub' : 'GitHub not configured'}</span>
+            </span>
+            {githubLoading ? (
+              <Loader2 className="animate-spin text-[#ffffff]" size={18} />
+            ) : (
+              <ArrowRight className="text-slate-400 transition group-hover:translate-x-1 group-hover:text-[#ffffff]" size={18} />
+            )}
           </button>
         </div>
 
@@ -168,7 +185,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="group flex w-full items-center justify-center rounded-lg bg-gradient-to-r from-cyan-400 via-emerald-400 to-amber-300 py-3 font-semibold text-slate-950 transition hover:shadow-lg hover:shadow-cyan-500/20 disabled:cursor-not-allowed disabled:opacity-50"
+            className="group flex w-full items-center justify-center rounded-lg bg-gradient-to-r from-sky-400 via-emerald-300 to-amber-300 py-3 font-semibold text-slate-950 transition hover:shadow-lg hover:shadow-cyan-500/20 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {loading ? 'Signing in...' : 'Sign In'}
             {!loading && <ArrowRight size={18} className="ml-2 group-hover:translate-x-1 transition-transform" />}

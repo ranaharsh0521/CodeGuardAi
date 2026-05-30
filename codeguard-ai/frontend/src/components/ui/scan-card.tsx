@@ -61,7 +61,7 @@ export function ScanCard({
   return (
     <div
       onClick={onClick}
-      className="card-hover cursor-pointer rounded-3xl border border-white/10 bg-gradient-to-br from-slate-950/70 via-white/[0.04] to-emerald-400/10 p-5 transition hover:border-emerald-300/30 sm:p-6"
+      className="card-hover cursor-pointer rounded-3xl border border-emerald-200/80 bg-white/80 p-5 shadow-[0_0_0_1px_rgba(16,185,129,0.12),0_18px_48px_rgba(16,185,129,0.14)] ring-1 ring-white/80 transition hover:border-emerald-300 hover:shadow-[0_0_0_2px_rgba(16,185,129,0.2),0_24px_70px_rgba(16,185,129,0.2)] sm:p-6"
     >
       <div className="mb-5 flex items-start justify-between gap-3">
         <div className="min-w-0">

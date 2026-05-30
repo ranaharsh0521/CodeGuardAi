@@ -1,25 +1,25 @@
 @import "tailwindcss";
 
 :root {
-  --background: #070816;
-  --foreground: #fafafa;
-  --card: #111827;
-  --card-foreground: #fafafa;
-  --popover: #111827;
-  --popover-foreground: #fafafa;
-  --primary: #fafafa;
-  --primary-foreground: #070816;
-  --secondary: #172033;
-  --secondary-foreground: #fafafa;
-  --muted: #172033;
-  --muted-foreground: #b6c2d3;
-  --accent: #243047;
-  --accent-foreground: #fafafa;
-  --destructive: #dc2626;
-  --destructive-foreground: #fafafa;
-  --border: #334155;
-  --input: #1e293b;
-  --ring: #38bdf8;
+  --background: #f8fbff;
+  --foreground: #102033;
+  --card: #ffffff;
+  --card-foreground: #102033;
+  --popover: #ffffff;
+  --popover-foreground: #102033;
+  --primary: #0f766e;
+  --primary-foreground: #ffffff;
+  --secondary: #eef6ff;
+  --secondary-foreground: #1e293b;
+  --muted: #eef2f7;
+  --muted-foreground: #64748b;
+  --accent: #e0f2fe;
+  --accent-foreground: #0f172a;
+  --destructive: #e11d48;
+  --destructive-foreground: #ffffff;
+  --border: #dbe7f3;
+  --input: #ffffff;
+  --ring: #0ea5e9;
   --radius: 0.5rem;
 }
 
@@ -31,9 +31,9 @@
 body {
   min-height: 100vh;
   background:
-    linear-gradient(120deg, rgba(45, 212, 191, 0.16), transparent 28%),
-    linear-gradient(240deg, rgba(244, 114, 182, 0.14), transparent 30%),
-    linear-gradient(180deg, #08111f 0%, #0d1024 48%, #111827 100%);
+    linear-gradient(115deg, rgba(14, 165, 233, 0.20), transparent 32%),
+    linear-gradient(245deg, rgba(16, 185, 129, 0.16), transparent 34%),
+    linear-gradient(180deg, #ffffff 0%, #f8fbff 48%, #eef7ff 100%);
   color: var(--foreground);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   line-height: 1.6;
@@ -48,16 +48,16 @@ body::before {
   pointer-events: none;
   content: "";
   background-image:
-    linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px),
-    linear-gradient(135deg, rgba(56, 189, 248, 0.12), transparent 38%, rgba(251, 191, 36, 0.08) 62%, transparent);
+    linear-gradient(rgba(15, 23, 42, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(15, 23, 42, 0.035) 1px, transparent 1px),
+    linear-gradient(135deg, rgba(14, 165, 233, 0.08), transparent 38%, rgba(251, 191, 36, 0.08) 62%, transparent);
   background-size: 44px 44px, 44px 44px, 100% 100%;
   mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.82), rgba(0, 0, 0, 0.18));
 }
 
 ::selection {
   background: rgba(45, 212, 191, 0.35);
-  color: white;
+  color: #0f172a;
 }
 
 /* Scrollbar */
@@ -66,7 +66,7 @@ body::before {
 }
 
 ::-webkit-scrollbar-track {
-  background: #0f172a;
+  background: #edf6ff;
 }
 
 ::-webkit-scrollbar-thumb {
@@ -80,10 +80,10 @@ body::before {
 
 /* Glass morphism effect */
 .glass {
-  background: rgba(15, 23, 42, 0.72);
-  backdrop-filter: blur(18px);
-  border: 1px solid rgba(148, 163, 184, 0.22);
-  box-shadow: 0 20px 60px rgba(2, 6, 23, 0.22);
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(22px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  box-shadow: 0 22px 70px rgba(15, 23, 42, 0.12);
 }
 
 /* Gradient text */
@@ -97,7 +97,7 @@ body::before {
 /* Animated gradient background */
 .animated-bg {
   background:
-    linear-gradient(-45deg, #07111f, #10233b, #16213f, #201334, #10251f);
+    linear-gradient(-45deg, #ffffff, #eef8ff, #f6fbff, #fff7ed, #eefdf6);
   background-size: 500% 500%;
   animation: gradient 15s ease infinite;
 }
@@ -118,7 +118,7 @@ body::before {
 /* Card hover effects */
 .card-hover:hover {
   transform: translateY(-3px);
-  box-shadow: 0 22px 50px rgba(2, 6, 23, 0.34), 0 0 34px rgba(56, 189, 248, 0.11);
+  box-shadow: 0 22px 50px rgba(15, 23, 42, 0.14), 0 0 34px rgba(14, 165, 233, 0.12);
   transition: all 0.3s ease;
 }
 
@@ -137,4 +137,121 @@ body::before {
   40% { content: "."; }
   60% { content: ".."; }
   80%, 100% { content: "..."; }
+}
+
+/* Light glass skin for existing dark Tailwind utility classes. */
+.apple-ui [class*="bg-slate-950"],
+.apple-ui [class*="bg-slate-900"],
+.apple-ui [class*="bg-gray-950"],
+.apple-ui [class*="bg-gray-900"],
+.apple-ui [class*="bg-gray-800"],
+.apple-ui [class*="bg-white/["] {
+  background-color: rgba(255, 255, 255, 0.68) !important;
+  backdrop-filter: blur(20px) saturate(155%);
+}
+
+.apple-ui [class*="border-white/"],
+.apple-ui [class*="border-gray-"],
+.apple-ui [class*="border-slate-"] {
+  border-color: rgba(148, 163, 184, 0.28) !important;
+}
+
+.apple-ui .text-white,
+.apple-ui .text-gray-100,
+.apple-ui .text-gray-200,
+.apple-ui .text-slate-100,
+.apple-ui .text-slate-200,
+.apple-ui .text-slate-300 {
+  color: #102033 !important;
+}
+
+.apple-ui .text-gray-300,
+.apple-ui .text-gray-400,
+.apple-ui .text-gray-500,
+.apple-ui .text-slate-400,
+.apple-ui .text-slate-500 {
+  color: #64748b !important;
+}
+
+.apple-ui .text-cyan-100,
+.apple-ui .text-cyan-200,
+.apple-ui .text-cyan-300 {
+  color: #0369a1 !important;
+}
+
+.apple-ui .text-emerald-100,
+.apple-ui .text-emerald-200,
+.apple-ui .text-emerald-300 {
+  color: #047857 !important;
+}
+
+.apple-ui .text-amber-100,
+.apple-ui .text-amber-200,
+.apple-ui .text-amber-300 {
+  color: #a16207 !important;
+}
+
+.apple-ui .text-red-100,
+.apple-ui .text-red-200,
+.apple-ui .text-red-300,
+.apple-ui .text-rose-100,
+.apple-ui .text-rose-200 {
+  color: #be123c !important;
+}
+
+.apple-ui input,
+.apple-ui textarea,
+.apple-ui select {
+  background-color: rgba(255, 255, 255, 0.74) !important;
+  border-color: rgba(148, 163, 184, 0.32) !important;
+  color: #102033 !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+.apple-ui input::placeholder,
+.apple-ui textarea::placeholder {
+  color: #94a3b8 !important;
+}
+
+.apple-ui pre,
+.apple-ui code {
+  background-color: rgba(248, 250, 252, 0.86) !important;
+  color: #102033 !important;
+}
+
+/* App-wide card polish: clear margins, readable text, and visible glowing borders. */
+.apple-ui [class*="rounded-3xl"][class*="border"]:not(button):not(input):not(textarea):not(select):not([class*="border-red"]):not([class*="border-rose"]) {
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.92), rgba(240, 249, 255, 0.74) 48%, rgba(236, 253, 245, 0.62)) !important;
+  border-color: rgba(125, 211, 252, 0.72) !important;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.96),
+    0 0 0 3px rgba(14, 165, 233, 0.08),
+    0 20px 55px rgba(14, 165, 233, 0.16),
+    inset 0 1px 0 rgba(255, 255, 255, 0.95) !important;
+}
+
+.apple-ui [class*="rounded-3xl"][class*="border"]:not(button):not(input):not(textarea):not(select):not([class*="border-red"]):not([class*="border-rose"]):hover {
+  border-color: rgba(56, 189, 248, 0.95) !important;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 1),
+    0 0 0 4px rgba(14, 165, 233, 0.12),
+    0 26px 76px rgba(14, 165, 233, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 1) !important;
+}
+
+.apple-ui [class*="rounded-2xl"][class*="border"][class*="p-4"]:not(button):not(input):not(textarea):not(select):not([class*="border-red"]):not([class*="border-rose"]),
+.apple-ui [class*="rounded-2xl"][class*="border"][class*="p-3"]:not(button):not(input):not(textarea):not(select):not([class*="border-red"]):not([class*="border-rose"]) {
+  background: rgba(255, 255, 255, 0.76) !important;
+  border-color: rgba(148, 163, 184, 0.34) !important;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.78),
+    0 12px 30px rgba(15, 23, 42, 0.08) !important;
+}
+
+.apple-ui [class*="rounded-3xl"][class*="border-dashed"],
+.apple-ui [class*="rounded-2xl"][class*="border-dashed"] {
+  border-color: rgba(14, 165, 233, 0.48) !important;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.82), rgba(224, 242, 254, 0.48)) !important;
 }

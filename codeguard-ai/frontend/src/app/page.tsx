@@ -204,14 +204,14 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen px-4 py-6 text-white sm:px-6 lg:px-8">
       <div className="mx-auto max-w-7xl">
-        <header className="mb-8 overflow-hidden rounded-3xl border border-cyan-200/20 bg-gradient-to-br from-cyan-400/12 via-slate-950/70 to-rose-400/12 p-5 shadow-2xl shadow-cyan-950/25 sm:p-8">
+        <header className="mb-8 overflow-hidden rounded-3xl border border-white/70 bg-gradient-to-br from-white/85 via-sky-50/80 to-rose-50/80 p-5 shadow-2xl shadow-sky-200/40 sm:p-8">
           <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
             <div className="max-w-3xl">
               <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-emerald-200/30 bg-emerald-300/10 px-3 py-1 text-xs font-semibold text-emerald-100">
                 <Sparkles size={14} />
                 AI powered code security
               </div>
-              <h1 className="max-w-3xl bg-gradient-to-r from-white via-cyan-100 to-amber-100 bg-clip-text text-3xl font-bold tracking-normal text-transparent sm:text-5xl">
+              <h1 className="max-w-3xl bg-gradient-to-r from-slate-950 via-sky-700 to-rose-700 bg-clip-text text-3xl font-bold tracking-normal text-transparent sm:text-5xl">
                 Secure your codebase with a cleaner command center.
               </h1>
               <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-400 sm:text-base">
@@ -414,33 +414,39 @@ export default function Dashboard() {
             {projects.map((project) => (
               <div
                 key={project.id}
-                className="card-hover rounded-3xl border border-white/10 bg-gradient-to-br from-slate-950/70 via-white/[0.04] to-cyan-400/10 p-5 transition hover:border-cyan-300/30 sm:p-6"
+                className="card-hover relative overflow-hidden rounded-3xl border border-sky-200/80 bg-white/80 p-5 shadow-[0_0_0_1px_rgba(14,165,233,0.14),0_18px_48px_rgba(14,165,233,0.16)] ring-1 ring-white/80 transition hover:border-sky-300 hover:shadow-[0_0_0_2px_rgba(14,165,233,0.22),0_24px_70px_rgba(14,165,233,0.22)] sm:p-6"
               >
-                <div className="mb-4 flex items-start justify-between gap-3">
+                <div className="absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r from-sky-400 via-emerald-300 to-rose-300" />
+                <div className="absolute -right-12 -top-12 h-28 w-28 rounded-full bg-sky-200/50 blur-2xl" />
+                <div className="absolute -bottom-10 left-8 h-24 w-24 rounded-full bg-emerald-200/45 blur-2xl" />
+
+                <div className="relative mb-5 flex items-start justify-between gap-4">
                   <div className="min-w-0">
-                    <h3 className="truncate text-lg font-semibold text-white">{project.name}</h3>
+                    <h3 className="truncate text-xl font-bold tracking-normal text-slate-950">{project.name}</h3>
                     {project.repository_url && (
-                      <p className="mt-1 truncate text-xs text-slate-500">{project.repository_url}</p>
+                      <p className="mt-2 truncate text-sm font-medium text-sky-700">{project.repository_url}</p>
                     )}
                   </div>
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-cyan-300/20 to-emerald-300/20 text-cyan-100">
-                    <FolderGit2 size={20} />
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-sky-200 bg-gradient-to-br from-sky-100 via-cyan-50 to-emerald-100 text-sky-700 shadow-inner">
+                    <FolderGit2 size={22} />
                   </div>
                 </div>
                 {project.description && (
-                  <p className="mb-4 line-clamp-2 text-sm leading-6 text-slate-400">{project.description}</p>
+                  <p className="relative mb-5 line-clamp-2 rounded-2xl border border-slate-200/80 bg-white/65 px-4 py-3 text-sm font-medium leading-6 text-slate-700">
+                    {project.description}
+                  </p>
                 )}
-                <div className="grid gap-3 sm:grid-cols-2">
+                <div className="relative grid gap-3 sm:grid-cols-2">
                   <Link
                     href={`/projects/${project.id}`}
-                    className="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 font-semibold text-slate-100 transition hover:bg-white/[0.08]"
+                    className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white/90 px-4 py-3 font-bold text-slate-900 shadow-sm transition hover:-translate-y-0.5 hover:border-sky-200 hover:shadow-lg hover:shadow-sky-100"
                   >
                     Details
                     <ArrowRight size={18} />
                   </Link>
                   <button
                     onClick={() => handleTriggerScan(project.id)}
-                    className="inline-flex items-center justify-center gap-2 rounded-2xl border border-cyan-300/30 bg-gradient-to-r from-cyan-300/15 to-emerald-300/15 px-4 py-3 font-semibold text-cyan-100 transition hover:from-cyan-300/20 hover:to-emerald-300/20"
+                    className="inline-flex items-center justify-center gap-2 rounded-2xl border border-sky-200 bg-gradient-to-r from-sky-100 via-cyan-100 to-emerald-100 px-4 py-3 font-bold text-sky-800 shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg hover:shadow-cyan-100"
                   >
                     Scan Now
                     <ArrowRight size={18} />
