@@ -2,13 +2,15 @@
 
 For another Windows laptop:
 
-1. Install Node.js 18+.
-2. Install Python 3.11+ and enable "Add python.exe to PATH".
-3. Copy or clone this project.
-4. Open the `codeguard-ai` folder.
-5. Double-click `setup-one-click.bat`.
+1. Copy or clone this project.
+2. Open the `codeguard-ai` folder.
+3. Double-click `setup-one-click.bat`.
 
-The batch file will create env files, create the backend virtual environment, install dependencies, initialize the database, start backend/frontend, wait for the frontend, and open the app.
+The batch file will check Node.js and Python. If either one is missing and Windows `winget` is available, it will install them automatically. Then it will create env files, create the backend virtual environment, install dependencies, initialize the database, start backend/frontend, wait for the frontend, and open the app.
+
+If automatic Node.js/Python installation fails, install these manually and run the batch file again:
+- Node.js 18+
+- Python 3.11+ with "Add python.exe to PATH" enabled
 
 URLs:
 - Frontend: `http://localhost:3000`

@@ -16,6 +16,8 @@ echo      CodeGuard AI - One Click Setup
 echo ========================================
 echo.
 echo This script prepares and starts everything:
+echo - Node.js and Python checks
+echo - automatic Node.js/Python install with winget when available
 echo - backend virtual environment
 echo - backend .env from .env.example if missing
 echo - Python dependencies
@@ -47,10 +49,13 @@ if errorlevel 1 exit /b 1
 call :CheckPythonVersion
 if errorlevel 1 exit /b 1
 
-call :CheckCommand node "Node.js 18+ is required. Install it from https://nodejs.org/"
+call :FindNode
 if errorlevel 1 exit /b 1
 
-call :CheckCommand npm "npm is required. Reinstall Node.js and make sure npm is selected."
+call :CheckNodeVersion
+if errorlevel 1 exit /b 1
+
+call :FindNpm
 if errorlevel 1 exit /b 1
 
 echo [1/7] Preparing backend environment...
@@ -129,7 +134,15 @@ echo Logs:     %LOG_DIR%
 echo.
 
 start "CodeGuard AI Backend" cmd /k "cd /d ""%BACKEND%"" && ""%BACKEND%\venv\Scripts\python.exe"" -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload > ""%LOG_DIR%\backend.log"" 2>&1"
-timeout /t 4 /nobreak >nul
+
+echo Waiting for backend...
+call :WaitForUrl "%BACKEND_URL%/docs" 30
+if errorlevel 1 (
+    echo Backend is still starting. If API does not work, check %LOG_DIR%\backend.log
+) else (
+    echo Backend is ready.
+)
+
 start "CodeGuard AI Frontend" cmd /k "cd /d ""%FRONTEND%"" && npm run dev > ""%LOG_DIR%\frontend.log"" 2>&1"
 
 echo [7/7] Waiting for the app to become available...
@@ -153,10 +166,47 @@ echo.
 pause
 exit /b 0
 
-:CheckCommand
-where %~1 >nul 2>&1
+:CheckNodeVersion
+node -e "process.exit(Number(process.versions.node.split('.')[0]) >= 18 ? 0 : 1)" >nul 2>&1
 if errorlevel 1 (
-    echo ERROR: %~2
+    echo ERROR: Node.js 18+ is required.
+    echo Install Node.js 18 or newer and run this setup again.
+    pause
+    exit /b 1
+)
+exit /b 0
+
+:FindNode
+where node >nul 2>&1
+if not errorlevel 1 exit /b 0
+
+echo Node.js was not found. Trying to install Node.js LTS with winget...
+call :InstallWithWinget OpenJS.NodeJS.LTS "Node.js LTS"
+if errorlevel 1 exit /b 1
+call :RefreshToolPath
+
+where node >nul 2>&1
+if errorlevel 1 (
+    echo ERROR: Node.js is still not available.
+    echo Restart this computer, then double-click setup-one-click.bat again.
+    pause
+    exit /b 1
+)
+exit /b 0
+
+:FindNpm
+where npm >nul 2>&1
+if not errorlevel 1 exit /b 0
+
+echo npm was not found. Trying to install Node.js LTS with winget...
+call :InstallWithWinget OpenJS.NodeJS.LTS "Node.js LTS"
+if errorlevel 1 exit /b 1
+call :RefreshToolPath
+
+where npm >nul 2>&1
+if errorlevel 1 (
+    echo ERROR: npm is still not available.
+    echo Restart this computer, then double-click setup-one-click.bat again.
     pause
     exit /b 1
 )
@@ -175,9 +225,25 @@ if not errorlevel 1 (
     exit /b 0
 )
 
-echo ERROR: Python 3.11+ is required.
-echo Install Python from https://www.python.org/downloads/
-echo Enable "Add python.exe to PATH" during installation.
+echo Python was not found. Trying to install Python 3.11 with winget...
+call :InstallWithWinget Python.Python.3.11 "Python 3.11"
+if errorlevel 1 exit /b 1
+call :RefreshToolPath
+
+where python >nul 2>&1
+if not errorlevel 1 (
+    set "PYTHON_CMD=python"
+    exit /b 0
+)
+
+where py >nul 2>&1
+if not errorlevel 1 (
+    set "PYTHON_CMD=py -3"
+    exit /b 0
+)
+
+echo ERROR: Python is still not available.
+echo Restart this computer, then double-click setup-one-click.bat again.
 pause
 exit /b 1
 
@@ -189,6 +255,28 @@ if errorlevel 1 (
     pause
     exit /b 1
 )
+exit /b 0
+
+:InstallWithWinget
+where winget >nul 2>&1
+if errorlevel 1 (
+    echo ERROR: %~2 is required, and winget is not available for automatic install.
+    echo Install it manually, then double-click setup-one-click.bat again.
+    pause
+    exit /b 1
+)
+
+winget install -e --id %~1 --accept-package-agreements --accept-source-agreements
+if errorlevel 1 (
+    echo ERROR: Failed to install %~2 with winget.
+    echo Install it manually, then double-click setup-one-click.bat again.
+    pause
+    exit /b 1
+)
+exit /b 0
+
+:RefreshToolPath
+set "PATH=%ProgramFiles%\nodejs;%ProgramFiles(x86)%\nodejs;%LocalAppData%\Programs\Python\Python313;%LocalAppData%\Programs\Python\Python312;%LocalAppData%\Programs\Python\Python311;%LocalAppData%\Microsoft\WindowsApps;%PATH%"
 exit /b 0
 
 :WaitForUrl
